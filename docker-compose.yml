@@ -1,0 +1,41 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # 后端 Django 服务
+  backend:
+    build: ./backend
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - ./backend:/app # 将本地代码挂载到容器，方便开发时热更新
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=db
+      - DB_NAME=imagedb
+      - DB_USER=user
+      - DB_PASS=password
+    depends_on:
+      - db # 确保先启动数据库服务
+
+  # 前端 React 服务 (使用 Nginx 托管)
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80" # 将本机的 80 端口映射到容器的 80 端口
+
+  # 数据库 MySQL 服务
+  db:
+    image: mysql:8.0
+    volumes:
+      - mysql_data:/var/lib/mysql # 数据持久化
+    environment:
+      - MYSQL_DATABASE=imagedb
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+      - MYSQL_ROOT_PASSWORD=rootpassword
+    ports:
+      - "3306:3306"
+
+volumes:
+  mysql_data: # 定义一个 volume 来持久化数据库数据
