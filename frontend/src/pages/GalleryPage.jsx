@@ -14,36 +14,46 @@ import {
   Snackbar,
   Alert,
   Typography,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
+  Chip,
+  Stack,
 } from '@mui/material';
 import { Add as AddIcon, CloudUpload as UploadIcon } from '@mui/icons-material';
 import { imageAPI } from '../services/api';
 import ImageCard from '../components/ImageCard';
 import ImageSlideshow from '../components/ImageSlideshow';
+import { useSearchFilter } from '../layouts/MainLayout';
 
 export default function GalleryPage() {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [tagDialogOpen, setTagDialogOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [newTags, setNewTags] = useState('');
   const [slideshowOpen, setSlideshowOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploadForm, setUploadForm] = useState({ title: '', description: '' });
   const [uploading, setUploading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [ordering, setOrdering] = useState('-uploaded_at');
+  
+  const { searchQuery, ordering } = useSearchFilter();
 
   useEffect(() => {
     loadImages();
-  }, [ordering]);
+  }, [ordering, searchQuery]);
 
   const loadImages = async () => {
     try {
       setLoading(true);
-      const response = await imageAPI.list({ ordering });
+      const params = { ordering };
+      
+      // 如果有搜索关键词，添加到参数中
+      if (searchQuery && searchQuery.trim()) {
+        params.search = searchQuery.trim();
+      }
+      
+      const response = await imageAPI.list(params);
       setImages(response.data.results || response.data || []);
     } catch (error) {
       showSnackbar('加载图片失败', 'error');
@@ -119,6 +129,41 @@ export default function GalleryPage() {
     setSlideshowOpen(true);
   };
 
+  const handleAddTags = (image) => {
+    setSelectedImage(image);
+    setNewTags('');
+    setTagDialogOpen(true);
+  };
+
+  const handleSaveTags = async () => {
+    if (!newTags.trim()) {
+      showSnackbar('请输入标签', 'error');
+      return;
+    }
+
+    const tags = newTags.split(',').map(t => t.trim()).filter(t => t);
+    
+    try {
+      await imageAPI.addTags(selectedImage.id, tags);
+      showSnackbar('标签添加成功', 'success');
+      setTagDialogOpen(false);
+      setNewTags('');
+      loadImages();
+    } catch (error) {
+      showSnackbar('添加标签失败', 'error');
+    }
+  };
+
+  const handleRemoveTag = async (tagId) => {
+    try {
+      await imageAPI.removeTags(selectedImage.id, [tagId]);
+      showSnackbar('标签已删除', 'success');
+      loadImages();
+    } catch (error) {
+      showSnackbar('删除标签失败', 'error');
+    }
+  };
+
   const showSnackbar = (message, severity = 'success') => {
     setSnackbar({ open: true, message, severity });
   };
@@ -127,19 +172,11 @@ export default function GalleryPage() {
     <Container maxWidth="xl">
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5">全部图片</Typography>
-        <FormControl sx={{ minWidth: 200 }}>
-          <InputLabel>排序方式</InputLabel>
-          <Select value={ordering} onChange={(e) => setOrdering(e.target.value)} label="排序方式">
-            <MenuItem value="-uploaded_at">上传时间（新到旧）</MenuItem>
-            <MenuItem value="uploaded_at">上传时间（旧到新）</MenuItem>
-            <MenuItem value="-shot_at">拍摄时间（新到旧）</MenuItem>
-            <MenuItem value="shot_at">拍摄时间（旧到新）</MenuItem>
-            <MenuItem value="-width">宽度（大到小）</MenuItem>
-            <MenuItem value="width">宽度（小到大）</MenuItem>
-            <MenuItem value="-height">高度（大到小）</MenuItem>
-            <MenuItem value="height">高度（小到大）</MenuItem>
-          </Select>
-        </FormControl>
+        {searchQuery && (
+          <Typography variant="body2" color="text.secondary">
+            搜索: {searchQuery}
+          </Typography>
+        )}
       </Box>
 
       {loading ? (
@@ -160,6 +197,7 @@ export default function GalleryPage() {
                 image={image}
                 onFavorite={handleFavorite}
                 onDelete={handleDelete}
+                onEdit={() => handleAddTags(image)}
                 onClick={() => handleImageClick(index)}
               />
             </Grid>
@@ -235,6 +273,45 @@ export default function GalleryPage() {
         images={images}
         initialIndex={selectedImageIndex}
       />
+
+      {/* 标签编辑对话框 */}
+      <Dialog open={tagDialogOpen} onClose={() => setTagDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>编辑标签</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            label="新标签（用逗号分隔）"
+            value={newTags}
+            onChange={(e) => setNewTags(e.target.value)}
+            margin="normal"
+            helperText="例如: 风景, 旅行, 夏天"
+            autoFocus
+          />
+          {selectedImage?.tags && selectedImage.tags.length > 0 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                当前标签:
+              </Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                {selectedImage.tags.map((tag) => (
+                  <Chip
+                    key={tag.id}
+                    label={tag.name}
+                    onDelete={() => handleRemoveTag(tag.id)}
+                    sx={{ mt: 1 }}
+                  />
+                ))}
+              </Stack>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTagDialogOpen(false)}>取消</Button>
+          <Button onClick={handleSaveTags} variant="contained">
+            添加
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={snackbar.open}

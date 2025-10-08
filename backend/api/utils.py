@@ -47,7 +47,10 @@ def extract_exif_data(image_path):
         if '0th' in exif_dict and piexif.ImageIFD.DateTime in exif_dict['0th']:
             datetime_str = exif_dict['0th'][piexif.ImageIFD.DateTime].decode('utf-8')
             try:
-                exif_data['shot_at'] = datetime.strptime(datetime_str, '%Y:%m:%d %H:%M:%S')
+                shot_datetime = datetime.strptime(datetime_str, '%Y:%m:%d %H:%M:%S')
+                exif_data['shot_at'] = shot_datetime
+                # 添加拍摄时间标签（格式：2025.09.30）
+                exif_data['tags'].append(shot_datetime.strftime('%Y.%m.%d'))
             except:
                 pass
         
@@ -70,28 +73,28 @@ def extract_exif_data(image_path):
                         lon = -lon
                 
                 exif_data['location'] = f"{lat:.6f}, {lon:.6f}"
+                
+                # 尝试获取地名（简化处理，实际应该调用地理编码API）
+                # 这里作为示例，你可以集成百度地图API或高德地图API进行逆地理编码
+                # 暂时使用坐标作为标签
+                exif_data['tags'].append(f"GPS: {lat:.2f},{lon:.2f}")
         
         # 提取相机信息作为标签
         if 'Exif' in exif_dict:
             # 相机型号
             if piexif.ExifIFD.LensMake in exif_dict['Exif']:
-                camera_make = exif_dict['Exif'][piexif.ExifIFD.LensMake].decode('utf-8', errors='ignore')
-                exif_data['tags'].append(camera_make)
+                camera_make = exif_dict['Exif'][piexif.ExifIFD.LensMake].decode('utf-8', errors='ignore').strip()
+                if camera_make:
+                    exif_data['tags'].append(camera_make)
             
             if piexif.ExifIFD.LensModel in exif_dict['Exif']:
-                camera_model = exif_dict['Exif'][piexif.ExifIFD.LensModel].decode('utf-8', errors='ignore')
-                exif_data['tags'].append(camera_model)
+                camera_model = exif_dict['Exif'][piexif.ExifIFD.LensModel].decode('utf-8', errors='ignore').strip()
+                if camera_model:
+                    exif_data['tags'].append(camera_model)
         
-        # 添加分辨率标签
+        # 添加分辨率标签（格式：4000x3000）
         if exif_data['width'] and exif_data['height']:
-            megapixels = (exif_data['width'] * exif_data['height']) / 1000000
-            exif_data['tags'].append(f"{megapixels:.1f}MP")
-            
-            # 添加方向标签
-            if exif_data['width'] > exif_data['height']:
-                exif_data['tags'].append('横向')
-            else:
-                exif_data['tags'].append('纵向')
+            exif_data['tags'].append(f"{exif_data['width']}x{exif_data['height']}")
         
     except Exception as e:
         print(f"提取EXIF信息失败: {str(e)}")
@@ -109,9 +112,9 @@ def convert_to_degrees(value):
     return d + (m / 60.0) + (s / 3600.0)
 
 
-def create_thumbnail(image_file, target_size=(400, 300), aspect_ratio=(4, 3)):
+def create_thumbnail(image_file, target_size=(2048, 1532), aspect_ratio=(4, 3)):
     """
-    创建缩略图 - 中心裁剪为4:3比例后缩放到指定大小
+    创建缩略图 - 中心裁剪为4:3比例后缩放到指定大小(2048x1532)
     返回: ContentFile对象
     """
     try:

@@ -102,8 +102,8 @@ class ImageViewSet(viewsets.ModelViewSet):
     serializer_class = ImageSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['title', 'description', 'location']
-    ordering_fields = ['uploaded_at', 'shot_at', 'width', 'height']
+    search_fields = ['title', 'description', 'location', 'tags__name']
+    ordering_fields = ['uploaded_at', 'shot_at', 'width', 'height', 'title']
     ordering = ['-uploaded_at']
     
     def get_queryset(self):

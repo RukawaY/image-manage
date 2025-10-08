@@ -16,6 +16,14 @@ import {
   ListItemIcon,
   ListItemText,
   Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
 } from '@mui/material';
 import {
   Home as HomeIcon,
@@ -27,7 +35,7 @@ import {
   FilterList as FilterIcon,
   Menu as MenuIcon,
 } from '@mui/icons-material';
-import { useState } from 'react';
+import { useState, createContext, useContext } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 const drawerWidth = 240;
@@ -40,9 +48,24 @@ const menuItems = [
   { text: '个人信息', icon: <PersonIcon />, path: '/profile' },
 ];
 
+// 创建搜索和筛选的Context
+const SearchFilterContext = createContext();
+
+export const useSearchFilter = () => {
+  const context = useContext(SearchFilterContext);
+  if (!context) {
+    throw new Error('useSearchFilter must be used within SearchFilterProvider');
+  }
+  return context;
+};
+
 export default function MainLayout() {
   const [anchorEl, setAnchorEl] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchDialogOpen, setSearchDialogOpen] = useState(false);
+  const [sortDialogOpen, setSortDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [ordering, setOrdering] = useState('-uploaded_at');
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -63,6 +86,23 @@ export default function MainLayout() {
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
+
+  const handleSearchSubmit = () => {
+    setSearchDialogOpen(false);
+  };
+
+  const handleSortSubmit = () => {
+    setSortDialogOpen(false);
+  };
+
+  const sortOptions = [
+    { label: '上传时间（从新到旧）', value: '-uploaded_at' },
+    { label: '上传时间（从旧到新）', value: 'uploaded_at' },
+    { label: '拍摄时间（从新到旧）', value: '-shot_at' },
+    { label: '拍摄时间（从旧到新）', value: 'shot_at' },
+    { label: '标题（A-Z）', value: 'title' },
+    { label: '标题（Z-A）', value: '-title' },
+  ];
 
   const drawer = (
     <div>
@@ -88,18 +128,26 @@ export default function MainLayout() {
     </div>
   );
 
+  const searchFilterValue = {
+    searchQuery,
+    setSearchQuery,
+    ordering,
+    setOrdering,
+  };
+
   return (
-    <Box sx={{ display: 'flex' }}>
-      <AppBar
-        position="fixed"
-        sx={{
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
-          bgcolor: 'white',
-          color: 'text.primary',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-        }}
-      >
+    <SearchFilterContext.Provider value={searchFilterValue}>
+      <Box sx={{ display: 'flex' }}>
+        <AppBar
+          position="fixed"
+          sx={{
+            width: { sm: `calc(100% - ${drawerWidth}px)` },
+            ml: { sm: `${drawerWidth}px` },
+            bgcolor: 'white',
+            color: 'text.primary',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          }}
+        >
         <Toolbar>
           <IconButton
             color="inherit"
@@ -115,10 +163,10 @@ export default function MainLayout() {
           </Typography>
 
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-            <IconButton color="inherit">
+            <IconButton color="inherit" onClick={() => setSearchDialogOpen(true)}>
               <SearchIcon />
             </IconButton>
-            <IconButton color="inherit">
+            <IconButton color="inherit" onClick={() => setSortDialogOpen(true)}>
               <FilterIcon />
             </IconButton>
             <IconButton onClick={handleUserMenuOpen} sx={{ ml: 1 }}>
@@ -189,7 +237,55 @@ export default function MainLayout() {
       >
         <Outlet />
       </Box>
+
+      {/* 搜索对话框 */}
+      <Dialog open={searchDialogOpen} onClose={() => setSearchDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>搜索图片</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            label="搜索关键词"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            margin="normal"
+            autoFocus
+            placeholder="搜索标题、描述、标签或地点..."
+            helperText="输入关键词后点击搜索按钮"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setSearchQuery(''); setSearchDialogOpen(false); }}>清除</Button>
+          <Button onClick={() => setSearchDialogOpen(false)}>取消</Button>
+          <Button onClick={handleSearchSubmit} variant="contained">搜索</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 排序对话框 */}
+      <Dialog open={sortDialogOpen} onClose={() => setSortDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>排序方式</DialogTitle>
+        <DialogContent>
+          <RadioGroup
+            value={ordering}
+            onChange={(e) => setOrdering(e.target.value)}
+            sx={{ mt: 2 }}
+          >
+            {sortOptions.map((option) => (
+              <FormControlLabel
+                key={option.value}
+                value={option.value}
+                control={<Radio />}
+                label={option.label}
+              />
+            ))}
+          </RadioGroup>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSortDialogOpen(false)}>取消</Button>
+          <Button onClick={handleSortSubmit} variant="contained">确定</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
+    </SearchFilterContext.Provider>
   );
 }
 

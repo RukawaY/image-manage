@@ -72,7 +72,6 @@ export default function AuthPage() {
     setLoading(true);
     setError('');
 
-    // 前端验证
     if (registerForm.password !== registerForm.password_confirm) {
       setError('两次密码输入不一致');
       setLoading(false);
@@ -108,51 +107,82 @@ export default function AuthPage() {
   };
 
   return (
-    <Container maxWidth="sm">
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg,rgb(120, 140, 231) 0%,rgb(111, 59, 162) 100%)',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* 装饰性背景元素 */}
       <Box
         sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          mt: 20,
-          mb: -20
+          position: 'absolute',
+          width: '500px',
+          height: '500px',
+          borderRadius: '50%',
+          background: 'rgba(255, 255, 255, 0.1)',
+          top: '-250px',
+          right: '-250px',
         }}
-      >
-        <img
-          src="/imageeee.png"
-          alt="Login Logo"
-          style={{
-            maxWidth: '500px',
-            height: 'auto'
+      />
+      <Box
+        sx={{
+          position: 'absolute',
+          width: '300px',
+          height: '300px',
+          borderRadius: '50%',
+          background: 'rgba(255, 255, 255, 0.1)',
+          bottom: '-150px',
+          left: '-150px',
+        }}
+      />
+
+      <Container maxWidth="sm" sx={{ position: 'relative', zIndex: 1 }}>
+        <Paper
+          elevation={24}
+          sx={{
+            overflow: 'hidden',
+            borderRadius: 3,
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(10px)',
           }}
-        />
-      </Box>
-      <Box
-        sx={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Paper elevation={3} sx={{ width: '100%', overflow: 'hidden' }}>
+        >
+          {/* 固定的顶部 */}
+          <Box
+            sx={{
+              p: 4,
+              textAlign: 'center',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+            }}
+          >
+            <img src="/imageeee.png" alt="Logo" style={{ width: '400px', height: 'auto' }} />
+            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+              你的专属图片管理平台
+            </Typography>
+          </Box>
+
+          {/* 标签页 */}
           <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
             <Tabs value={tabValue} onChange={handleTabChange} centered>
-              <Tab label="登录" />
-              <Tab label="注册" />
+              <Tab label="登录" sx={{ minWidth: 120, fontWeight: 'medium' }} />
+              <Tab label="注册" sx={{ minWidth: 120, fontWeight: 'medium' }} />
             </Tabs>
           </Box>
 
           {error && (
-            <Box sx={{ p: 2 }}>
+            <Box sx={{ p: 2, pb: 0 }}>
               <Alert severity="error">{error}</Alert>
             </Box>
           )}
 
           <TabPanel value={tabValue} index={0}>
-            <Typography variant="h5" gutterBottom align="center">
-              欢迎回来
-            </Typography>
-            <Box component="form" onSubmit={handleLogin} sx={{ mt: 2 }}>
+            <Box component="form" onSubmit={handleLogin}>
               <TextField
                 fullWidth
                 label="用户名"
@@ -162,6 +192,7 @@ export default function AuthPage() {
                 margin="normal"
                 required
                 autoFocus
+                sx={{ mb: 2 }}
               />
               <TextField
                 fullWidth
@@ -172,25 +203,29 @@ export default function AuthPage() {
                 onChange={handleLoginChange}
                 margin="normal"
                 required
+                sx={{ mb: 3 }}
               />
               <Button
                 fullWidth
                 type="submit"
                 variant="contained"
                 size="large"
-                sx={{ mt: 3 }}
                 disabled={loading}
+                sx={{
+                  py: 1.5,
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #5568d3 0%, #6a4193 100%)',
+                  },
+                }}
               >
-                {loading ? <CircularProgress size={24} /> : '登录'}
+                {loading ? <CircularProgress size={24} color="inherit" /> : '登录'}
               </Button>
             </Box>
           </TabPanel>
 
           <TabPanel value={tabValue} index={1}>
-            <Typography variant="h5" gutterBottom align="center">
-              创建账户
-            </Typography>
-            <Box component="form" onSubmit={handleRegister} sx={{ mt: 2 }}>
+            <Box component="form" onSubmit={handleRegister}>
               <TextField
                 fullWidth
                 label="用户名"
@@ -201,6 +236,7 @@ export default function AuthPage() {
                 required
                 helperText="至少6个字符"
                 autoFocus
+                sx={{ mb: 1 }}
               />
               <TextField
                 fullWidth
@@ -211,6 +247,7 @@ export default function AuthPage() {
                 onChange={handleRegisterChange}
                 margin="normal"
                 required
+                sx={{ mb: 1 }}
               />
               <TextField
                 fullWidth
@@ -222,6 +259,7 @@ export default function AuthPage() {
                 margin="normal"
                 required
                 helperText="至少6个字符"
+                sx={{ mb: 1 }}
               />
               <TextField
                 fullWidth
@@ -232,22 +270,33 @@ export default function AuthPage() {
                 onChange={handleRegisterChange}
                 margin="normal"
                 required
+                sx={{ mb: 3 }}
               />
               <Button
                 fullWidth
                 type="submit"
                 variant="contained"
                 size="large"
-                sx={{ mt: 3 }}
                 disabled={loading}
+                sx={{
+                  py: 1.5,
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #5568d3 0%, #6a4193 100%)',
+                  },
+                }}
               >
-                {loading ? <CircularProgress size={24} /> : '注册'}
+                {loading ? <CircularProgress size={24} color="inherit" /> : '注册'}
               </Button>
             </Box>
           </TabPanel>
+
+          {/* 底部装饰 */}
+          <Box sx={{ p: 2, textAlign: 'center', color: 'text.secondary', fontSize: '0.875rem' }}>
+            © 2025 Imageeee. 让每一张照片都有故事
+          </Box>
         </Paper>
-      </Box>
-    </Container>
+      </Container>
+    </Box>
   );
 }
-
