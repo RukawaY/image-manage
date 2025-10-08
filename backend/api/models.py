@@ -15,6 +15,8 @@ class User(AbstractUser):
         unique=True,
         validators=[MinLengthValidator(6, message="用户名至少需要6个字符")]
     )
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True, verbose_name='头像')
+    bio = models.TextField(blank=True, null=True, verbose_name='个人简介')
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -59,6 +61,7 @@ class Image(models.Model):
     location = models.CharField(max_length=255, blank=True, null=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     tags = models.ManyToManyField(Tag, through='ImageTag', related_name='images')
+    favorited_by = models.ManyToManyField(User, through='Favorite', related_name='favorite_images')
     
     class Meta:
         db_table = 'images'
@@ -68,6 +71,23 @@ class Image(models.Model):
     
     def __str__(self):
         return self.title or f"图片 {self.id}"
+
+
+class Favorite(models.Model):
+    """收藏模型"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    image = models.ForeignKey(Image, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'favorites'
+        unique_together = ['user', 'image']
+        verbose_name = '收藏'
+        verbose_name_plural = '收藏'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.image}"
 
 
 class ImageTag(models.Model):

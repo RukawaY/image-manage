@@ -2,7 +2,12 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthPage from './pages/AuthPage';
+import MainLayout from './layouts/MainLayout';
 import HomePage from './pages/HomePage';
+import GalleryPage from './pages/GalleryPage';
+import CategoriesPage from './pages/CategoriesPage';
+import FavoritesPage from './pages/FavoritesPage';
+import ProfilePage from './pages/ProfilePage';
 import { CircularProgress, Box } from '@mui/material';
 
 // 创建简约现代的主题
@@ -123,10 +128,16 @@ function App() {
               path="/"
               element={
                 <ProtectedRoute>
-                  <HomePage />
+                  <MainLayout />
                 </ProtectedRoute>
               }
-            />
+            >
+              <Route index element={<HomePage />} />
+              <Route path="gallery" element={<GalleryPage />} />
+              <Route path="categories" element={<CategoriesPage />} />
+              <Route path="favorites" element={<FavoritesPage />} />
+              <Route path="profile" element={<ProfilePage />} />
+            </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>

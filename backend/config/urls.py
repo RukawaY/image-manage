@@ -34,6 +34,8 @@ urlpatterns = [
     path('api/auth/login/', views.login_view, name='login'),
     path('api/auth/logout/', views.logout_view, name='logout'),
     path('api/auth/user/', views.current_user_view, name='current_user'),
+    path('api/auth/user/update/', views.update_user_view, name='update_user'),
+    path('api/auth/user/avatar/', views.upload_avatar_view, name='upload_avatar'),
     
     # API路由
     path('api/', include(router.urls)),

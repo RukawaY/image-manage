@@ -73,6 +73,11 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:3000',
 ]
 
+# CSRF Cookie设置
+CSRF_COOKIE_SAMESITE = 'Lax'  # 允许跨站点请求携带Cookie
+CSRF_COOKIE_HTTPONLY = False  # 允许JavaScript读取CSRF cookie
+CSRF_USE_SESSIONS = False  # 使用cookie而不是session存储CSRF token
+
 ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [

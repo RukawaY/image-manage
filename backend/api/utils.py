@@ -109,9 +109,9 @@ def convert_to_degrees(value):
     return d + (m / 60.0) + (s / 3600.0)
 
 
-def create_thumbnail(image_file, max_size=(300, 300)):
+def create_thumbnail(image_file, target_size=(400, 300), aspect_ratio=(4, 3)):
     """
-    创建缩略图
+    创建缩略图 - 中心裁剪为4:3比例后缩放到指定大小
     返回: ContentFile对象
     """
     try:
@@ -128,8 +128,24 @@ def create_thumbnail(image_file, max_size=(300, 300)):
             background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
             img = background
         
-        # 生成缩略图（保持比例）
-        img.thumbnail(max_size, PILImage.Resampling.LANCZOS)
+        # 计算目标宽高比
+        target_ratio = aspect_ratio[0] / aspect_ratio[1]  # 4:3 = 1.333...
+        current_ratio = img.width / img.height
+        
+        # 中心裁剪为4:3比例
+        if current_ratio > target_ratio:
+            # 图片太宽，裁剪左右
+            new_width = int(img.height * target_ratio)
+            left = (img.width - new_width) // 2
+            img = img.crop((left, 0, left + new_width, img.height))
+        elif current_ratio < target_ratio:
+            # 图片太高，裁剪上下
+            new_height = int(img.width / target_ratio)
+            top = (img.height - new_height) // 2
+            img = img.crop((0, top, img.width, top + new_height))
+        
+        # 缩放到目标尺寸
+        img = img.resize(target_size, PILImage.Resampling.LANCZOS)
         
         # 保存到内存
         thumb_io = BytesIO()

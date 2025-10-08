@@ -111,6 +111,23 @@ export default function AuthPage() {
     <Container maxWidth="sm">
       <Box
         sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          mt: 20,
+          mb: -20
+        }}
+      >
+        <img
+          src="/imageeee.png"
+          alt="Login Logo"
+          style={{
+            maxWidth: '500px',
+            height: 'auto'
+          }}
+        />
+      </Box>
+      <Box
+        sx={{
           minHeight: '100vh',
           display: 'flex',
           alignItems: 'center',

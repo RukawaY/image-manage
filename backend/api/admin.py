@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, Image, Tag, ImageTag
+from .models import User, Image, Tag, ImageTag, Favorite
 
 
 @admin.register(User)
@@ -9,6 +9,9 @@ class UserAdmin(BaseUserAdmin):
     list_filter = ['is_staff', 'is_superuser', 'created_at']
     search_fields = ['username', 'email']
     ordering = ['-created_at']
+    fieldsets = BaseUserAdmin.fieldsets + (
+        ('额外信息', {'fields': ('avatar', 'bio')}),
+    )
 
 
 @admin.register(Image)
@@ -31,3 +34,11 @@ class TagAdmin(admin.ModelAdmin):
 class ImageTagAdmin(admin.ModelAdmin):
     list_display = ['image', 'tag']
     raw_id_fields = ['image', 'tag']
+
+
+@admin.register(Favorite)
+class FavoriteAdmin(admin.ModelAdmin):
+    list_display = ['user', 'image', 'created_at']
+    list_filter = ['created_at']
+    raw_id_fields = ['user', 'image']
+    ordering = ['-created_at']

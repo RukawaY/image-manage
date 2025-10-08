@@ -3,13 +3,15 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import login, logout
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.shortcuts import get_object_or_404
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.utils.decorators import method_decorator
 import os
 
-from .models import User, Image, Tag, ImageTag
+from .models import User, Image, Tag, ImageTag, Favorite
 from .serializers import (
-    UserRegisterSerializer, UserLoginSerializer, UserSerializer,
+    UserRegisterSerializer, UserLoginSerializer, UserSerializer, UserUpdateSerializer,
     ImageSerializer, ImageUploadSerializer, TagSerializer
 )
 from .utils import extract_exif_data, create_thumbnail, edit_image
@@ -17,11 +19,13 @@ from .utils import extract_exif_data, create_thumbnail, edit_image
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@ensure_csrf_cookie  # 确保设置CSRF cookie
 def register_view(request):
     """用户注册"""
     serializer = UserRegisterSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.save()
+        login(request, user)  # 注册后自动登录
         return Response({
             'message': '注册成功',
             'user': UserSerializer(user).data
@@ -31,6 +35,7 @@ def register_view(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@ensure_csrf_cookie  # 确保设置CSRF cookie
 def login_view(request):
     """用户登录"""
     serializer = UserLoginSerializer(data=request.data)
@@ -56,8 +61,39 @@ def logout_view(request):
 @permission_classes([IsAuthenticated])
 def current_user_view(request):
     """获取当前用户信息"""
-    serializer = UserSerializer(request.user)
+    serializer = UserSerializer(request.user, context={'request': request})
     return Response(serializer.data)
+
+
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def update_user_view(request):
+    """更新用户信息"""
+    serializer = UserUpdateSerializer(request.user, data=request.data, partial=True, context={'request': request})
+    if serializer.is_valid():
+        serializer.save()
+        return Response({
+            'message': '更新成功',
+            'user': UserSerializer(request.user, context={'request': request}).data
+        })
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_avatar_view(request):
+    """上传头像"""
+    if 'avatar' not in request.FILES:
+        return Response({'error': '请选择头像文件'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    user = request.user
+    user.avatar = request.FILES['avatar']
+    user.save()
+    
+    return Response({
+        'message': '头像上传成功',
+        'user': UserSerializer(user, context={'request': request}).data
+    })
 
 
 class ImageViewSet(viewsets.ModelViewSet):
@@ -272,6 +308,43 @@ class ImageViewSet(viewsets.ModelViewSet):
             'image': serializer.data
         })
     
+    @action(detail=True, methods=['post'])
+    def favorite(self, request, pk=None):
+        """收藏图片"""
+        image = self.get_object()
+        favorite, created = Favorite.objects.get_or_create(user=request.user, image=image)
+        
+        if created:
+            return Response({'message': '收藏成功', 'is_favorited': True})
+        else:
+            return Response({'message': '已经收藏过了', 'is_favorited': True})
+    
+    @action(detail=True, methods=['post'])
+    def unfavorite(self, request, pk=None):
+        """取消收藏"""
+        image = self.get_object()
+        deleted_count, _ = Favorite.objects.filter(user=request.user, image=image).delete()
+        
+        if deleted_count > 0:
+            return Response({'message': '已取消收藏', 'is_favorited': False})
+        else:
+            return Response({'message': '未收藏过此图片', 'is_favorited': False})
+    
+    @action(detail=False, methods=['get'])
+    def favorites(self, request):
+        """获取用户收藏的图片列表"""
+        favorites = Favorite.objects.filter(user=request.user).select_related('image')
+        images = [f.image for f in favorites]
+        
+        # 应用分页
+        page = self.paginate_queryset(images)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(images, many=True, context={'request': request})
+        return Response(serializer.data)
+    
     def perform_destroy(self, instance):
         """删除图片时同时删除文件"""
         # 删除物理文件
@@ -296,11 +369,19 @@ class TagViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def popular(self, request):
         """获取热门标签（按使用次数排序）"""
-        from django.db.models import Count
-        
         tags = Tag.objects.annotate(
             usage_count=Count('images')
-        ).order_by('-usage_count')[:20]
+        ).filter(usage_count__gt=0).order_by('-usage_count')[:20]
+        
+        serializer = self.get_serializer(tags, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def all_tags(self, request):
+        """获取所有标签（按名称排序）"""
+        tags = Tag.objects.annotate(
+            usage_count=Count('images')
+        ).filter(usage_count__gt=0).order_by('name')
         
         serializer = self.get_serializer(tags, many=True)
         return Response(serializer.data)
