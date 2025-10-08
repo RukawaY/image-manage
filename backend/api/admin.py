@@ -18,7 +18,6 @@ class ImageAdmin(admin.ModelAdmin):
     search_fields = ['title', 'description', 'location']
     raw_id_fields = ['user']
     readonly_fields = ['uploaded_at', 'width', 'height']
-    filter_horizontal = ['tags']
 
 
 @admin.register(Tag)
