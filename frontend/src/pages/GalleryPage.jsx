@@ -3,7 +3,6 @@ import {
   Container,
   Grid,
   Box,
-  Fab,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -17,7 +16,7 @@ import {
   Chip,
   Stack,
 } from '@mui/material';
-import { Add as AddIcon, CloudUpload as UploadIcon } from '@mui/icons-material';
+import { CloudUpload as UploadIcon } from '@mui/icons-material';
 import { imageAPI } from '../services/api';
 import ImageCard from '../components/ImageCard';
 import ImageSlideshow from '../components/ImageSlideshow';
@@ -26,7 +25,6 @@ import { useSearchFilter } from '../layouts/MainLayout';
 export default function GalleryPage() {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [tagDialogOpen, setTagDialogOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [newTags, setNewTags] = useState('');
@@ -37,7 +35,7 @@ export default function GalleryPage() {
   const [uploading, setUploading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   
-  const { searchQuery, ordering } = useSearchFilter();
+  const { searchQuery, ordering, uploadDialogOpen, setUploadDialogOpen } = useSearchFilter();
 
   useEffect(() => {
     loadImages();
@@ -204,15 +202,6 @@ export default function GalleryPage() {
           ))}
         </Grid>
       )}
-
-      <Fab
-        color="primary"
-        aria-label="上传"
-        sx={{ position: 'fixed', bottom: 32, right: 32 }}
-        onClick={() => setUploadDialogOpen(true)}
-      >
-        <AddIcon />
-      </Fab>
 
       <Dialog open={uploadDialogOpen} onClose={() => setUploadDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>上传图片</DialogTitle>

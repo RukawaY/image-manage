@@ -16,10 +16,6 @@ import {
   ListItemIcon,
   ListItemText,
   Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   TextField,
   RadioGroup,
   FormControlLabel,
@@ -34,6 +30,7 @@ import {
   Search as SearchIcon,
   FilterList as FilterIcon,
   Menu as MenuIcon,
+  Add as AddIcon,
 } from '@mui/icons-material';
 import { useState, createContext, useContext } from 'react';
 import { useAuth } from '../contexts/AuthContext';
@@ -62,10 +59,11 @@ export const useSearchFilter = () => {
 export default function MainLayout() {
   const [anchorEl, setAnchorEl] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [searchDialogOpen, setSearchDialogOpen] = useState(false);
-  const [sortDialogOpen, setSortDialogOpen] = useState(false);
+  const [searchExpanded, setSearchExpanded] = useState(false);
+  const [sortExpanded, setSortExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [ordering, setOrdering] = useState('-uploaded_at');
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -87,12 +85,27 @@ export default function MainLayout() {
     setMobileOpen(!mobileOpen);
   };
 
-  const handleSearchSubmit = () => {
-    setSearchDialogOpen(false);
+  const handleSearchToggle = () => {
+    setSearchExpanded(!searchExpanded);
+    if (!searchExpanded) {
+      setSortExpanded(false);
+    }
   };
 
-  const handleSortSubmit = () => {
-    setSortDialogOpen(false);
+  const handleSortToggle = () => {
+    setSortExpanded(!sortExpanded);
+    if (!sortExpanded) {
+      setSearchExpanded(false);
+    }
+  };
+
+  const handleSearchSubmit = (e) => {
+    if (e) e.preventDefault();
+    // 搜索逻辑在GalleryPage中自动触发
+  };
+
+  const handleSearchClear = () => {
+    setSearchQuery('');
   };
 
   const sortOptions = [
@@ -125,6 +138,26 @@ export default function MainLayout() {
           </ListItem>
         ))}
       </List>
+      
+      <Divider sx={{ my: 2 }} />
+      
+      {/* 上传按钮 */}
+      <Box sx={{ px: 2 }}>
+        <Button
+          fullWidth
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setUploadDialogOpen(true)}
+          sx={{
+            background: 'rgb(120, 140, 231)',
+            '&:hover': {
+              background: 'rgb(110, 130, 221)',
+            },
+          }}
+        >
+          上传图片
+        </Button>
+      </Box>
     </div>
   );
 
@@ -133,6 +166,8 @@ export default function MainLayout() {
     setSearchQuery,
     ordering,
     setOrdering,
+    uploadDialogOpen,
+    setUploadDialogOpen,
   };
 
   return (
@@ -163,12 +198,72 @@ export default function MainLayout() {
           </Typography>
 
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-            <IconButton color="inherit" onClick={() => setSearchDialogOpen(true)}>
-              <SearchIcon />
-            </IconButton>
-            <IconButton color="inherit" onClick={() => setSortDialogOpen(true)}>
+            {/* 搜索按钮和搜索框 */}
+            <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <IconButton 
+                color="inherit" 
+                onClick={handleSearchToggle}
+                sx={{
+                  transition: 'all 0.3s',
+                  ...(searchExpanded && { color: 'primary.main' }),
+                }}
+              >
+                <SearchIcon />
+              </IconButton>
+              <Box
+                component="form"
+                onSubmit={handleSearchSubmit}
+                sx={{
+                  position: 'absolute',
+                  right: 40,
+                  width: searchExpanded ? '300px' : '0px',
+                  overflow: 'hidden',
+                  transition: 'width 0.3s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                }}
+              >
+                <TextField
+                  size="small"
+                  placeholder="搜索图片..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  sx={{
+                    width: '100%',
+                    bgcolor: 'white',
+                    borderRadius: 1,
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: 'rgba(0, 0, 0, 0.23)',
+                      },
+                    },
+                  }}
+                />
+                {searchQuery && (
+                  <IconButton
+                    size="small"
+                    onClick={handleSearchClear}
+                    sx={{ position: 'absolute', right: 8 }}
+                  >
+                    <Typography variant="caption">✕</Typography>
+                  </IconButton>
+                )}
+              </Box>
+            </Box>
+
+            {/* 筛选按钮 */}
+            <IconButton 
+              color="inherit" 
+              onClick={handleSortToggle}
+              sx={{
+                transition: 'all 0.3s',
+                ...(sortExpanded && { color: 'primary.main' }),
+              }}
+            >
               <FilterIcon />
             </IconButton>
+
             <IconButton onClick={handleUserMenuOpen} sx={{ ml: 1 }}>
               <Avatar
                 src={user?.avatar_url}
@@ -194,6 +289,36 @@ export default function MainLayout() {
             <MenuItem onClick={handleLogout}>退出登录</MenuItem>
           </Menu>
         </Toolbar>
+
+        {/* 排序选项下拉面板 */}
+        <Box
+          sx={{
+            maxHeight: sortExpanded ? '300px' : '0px',
+            overflow: 'hidden',
+            transition: 'max-height 0.3s ease',
+            bgcolor: 'background.paper',
+            borderTop: sortExpanded ? '1px solid rgba(0, 0, 0, 0.12)' : 'none',
+          }}
+        >
+          <Box sx={{ p: 2 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              排序方式
+            </Typography>
+            <RadioGroup
+              value={ordering}
+              onChange={(e) => setOrdering(e.target.value)}
+            >
+              {sortOptions.map((option) => (
+                <FormControlLabel
+                  key={option.value}
+                  value={option.value}
+                  control={<Radio size="small" />}
+                  label={option.label}
+                />
+              ))}
+            </RadioGroup>
+          </Box>
+        </Box>
       </AppBar>
 
       <Box
@@ -237,53 +362,6 @@ export default function MainLayout() {
       >
         <Outlet />
       </Box>
-
-      {/* 搜索对话框 */}
-      <Dialog open={searchDialogOpen} onClose={() => setSearchDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>搜索图片</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="搜索关键词"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            margin="normal"
-            autoFocus
-            placeholder="搜索标题、描述、标签或地点..."
-            helperText="输入关键词后点击搜索按钮"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => { setSearchQuery(''); setSearchDialogOpen(false); }}>清除</Button>
-          <Button onClick={() => setSearchDialogOpen(false)}>取消</Button>
-          <Button onClick={handleSearchSubmit} variant="contained">搜索</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* 排序对话框 */}
-      <Dialog open={sortDialogOpen} onClose={() => setSortDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>排序方式</DialogTitle>
-        <DialogContent>
-          <RadioGroup
-            value={ordering}
-            onChange={(e) => setOrdering(e.target.value)}
-            sx={{ mt: 2 }}
-          >
-            {sortOptions.map((option) => (
-              <FormControlLabel
-                key={option.value}
-                value={option.value}
-                control={<Radio />}
-                label={option.label}
-              />
-            ))}
-          </RadioGroup>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSortDialogOpen(false)}>取消</Button>
-          <Button onClick={handleSortSubmit} variant="contained">确定</Button>
-        </DialogActions>
-      </Dialog>
     </Box>
     </SearchFilterContext.Provider>
   );
