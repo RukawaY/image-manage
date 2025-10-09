@@ -16,7 +16,6 @@ import {
   Chip,
   Stack,
 } from '@mui/material';
-import { CloudUpload as UploadIcon } from '@mui/icons-material';
 import { imageAPI } from '../services/api';
 import ImageCard from '../components/ImageCard';
 import ImageSlideshow from '../components/ImageSlideshow';
@@ -30,16 +29,20 @@ export default function GalleryPage() {
   const [newTags, setNewTags] = useState('');
   const [slideshowOpen, setSlideshowOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [uploadForm, setUploadForm] = useState({ title: '', description: '' });
-  const [uploading, setUploading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   
-  const { searchQuery, ordering, uploadDialogOpen, setUploadDialogOpen } = useSearchFilter();
+  const { searchQuery, ordering, uploadSuccess, setUploadSuccess } = useSearchFilter();
 
   useEffect(() => {
     loadImages();
   }, [ordering, searchQuery]);
+
+  useEffect(() => {
+    if (uploadSuccess) {
+      loadImages();
+      setUploadSuccess(false);
+    }
+  }, [uploadSuccess, setUploadSuccess]);
 
   const loadImages = async () => {
     try {
@@ -57,43 +60,6 @@ export default function GalleryPage() {
       showSnackbar('加载图片失败', 'error');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        showSnackbar('请选择图片文件', 'error');
-        return;
-      }
-      setSelectedFile(file);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!selectedFile) {
-      showSnackbar('请选择要上传的图片', 'error');
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-    formData.append('title', uploadForm.title || selectedFile.name);
-    formData.append('description', uploadForm.description);
-
-    try {
-      setUploading(true);
-      await imageAPI.upload(formData);
-      showSnackbar('上传成功', 'success');
-      setUploadDialogOpen(false);
-      setSelectedFile(null);
-      setUploadForm({ title: '', description: '' });
-      loadImages();
-    } catch (error) {
-      showSnackbar('上传失败', 'error');
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -202,59 +168,6 @@ export default function GalleryPage() {
           ))}
         </Grid>
       )}
-
-      <Dialog open={uploadDialogOpen} onClose={() => setUploadDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>上传图片</DialogTitle>
-        <DialogContent>
-          <Box sx={{ mt: 2 }}>
-            <input
-              accept="image/*"
-              style={{ display: 'none' }}
-              id="file-upload"
-              type="file"
-              onChange={handleFileSelect}
-            />
-            <label htmlFor="file-upload">
-              <Button
-                variant="outlined"
-                component="span"
-                startIcon={<UploadIcon />}
-                fullWidth
-                sx={{ mb: 2 }}
-              >
-                选择图片
-              </Button>
-            </label>
-            {selectedFile && (
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                已选择: {selectedFile.name}
-              </Typography>
-            )}
-            <TextField
-              fullWidth
-              label="标题"
-              value={uploadForm.title}
-              onChange={(e) => setUploadForm({ ...uploadForm, title: e.target.value })}
-              margin="normal"
-            />
-            <TextField
-              fullWidth
-              label="描述"
-              value={uploadForm.description}
-              onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
-              margin="normal"
-              multiline
-              rows={3}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setUploadDialogOpen(false)}>取消</Button>
-          <Button onClick={handleUpload} disabled={uploading || !selectedFile} variant="contained">
-            {uploading ? <CircularProgress size={24} /> : '上传'}
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       <ImageSlideshow
         open={slideshowOpen}

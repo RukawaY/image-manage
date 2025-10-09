@@ -44,17 +44,24 @@ def extract_exif_data(image_path):
         exif_dict = piexif.load(img.info.get('exif', b''))
         
         # 提取拍摄时间
+        shot_datetime = None
         if '0th' in exif_dict and piexif.ImageIFD.DateTime in exif_dict['0th']:
             datetime_str = exif_dict['0th'][piexif.ImageIFD.DateTime].decode('utf-8')
             try:
                 shot_datetime = datetime.strptime(datetime_str, '%Y:%m:%d %H:%M:%S')
                 exif_data['shot_at'] = shot_datetime
-                # 添加拍摄时间标签（格式：2025.09.30）
-                exif_data['tags'].append(shot_datetime.strftime('%Y.%m.%d'))
             except:
                 pass
         
+        # 添加日期标签（如果有拍摄时间就用拍摄时间，否则用当前时间）
+        if shot_datetime:
+            exif_data['tags'].append(shot_datetime.strftime('%Y.%m.%d'))
+        else:
+            # 如果没有拍摄时间，使用当前上传时间
+            exif_data['tags'].append(datetime.now().strftime('%Y.%m.%d'))
+        
         # 提取GPS位置信息
+        has_location = False
         if 'GPS' in exif_dict:
             gps_info = exif_dict['GPS']
             if piexif.GPSIFD.GPSLatitude in gps_info and piexif.GPSIFD.GPSLongitude in gps_info:
@@ -74,10 +81,26 @@ def extract_exif_data(image_path):
                 
                 exif_data['location'] = f"{lat:.6f}, {lon:.6f}"
                 
-                # 尝试获取地名（简化处理，实际应该调用地理编码API）
-                # 这里作为示例，你可以集成百度地图API或高德地图API进行逆地理编码
-                # 暂时使用坐标作为标签
-                exif_data['tags'].append(f"GPS: {lat:.2f},{lon:.2f}")
+                # 添加地理位置标签
+                # 根据坐标范围判断大致区域
+                if 18 <= lat <= 54 and 73 <= lon <= 135:
+                    exif_data['tags'].append("中国")
+                elif 24 <= lat <= 46 and 122 <= lon <= 146:
+                    exif_data['tags'].append("日本")
+                elif 33 <= lat <= 43 and 124 <= lon <= 132:
+                    exif_data['tags'].append("韩国")
+                elif 25 <= lat <= 49 and -125 <= lon <= -66:
+                    exif_data['tags'].append("美国")
+                elif 41 <= lat <= 51 and -5 <= lon <= 10:
+                    exif_data['tags'].append("欧洲")
+                else:
+                    # 其他地区显示坐标
+                    exif_data['tags'].append(f"位置: {lat:.2f}°, {lon:.2f}°")
+                has_location = True
+        
+        # 如果没有GPS信息，添加"未知位置"标签
+        if not has_location:
+            exif_data['tags'].append("未知位置")
         
         # 提取相机信息作为标签
         if 'Exif' in exif_dict:
@@ -112,9 +135,9 @@ def convert_to_degrees(value):
     return d + (m / 60.0) + (s / 3600.0)
 
 
-def create_thumbnail(image_file, target_size=(2048, 1532), aspect_ratio=(4, 3)):
+def create_thumbnail(image_file, target_size=(4096, 3072), aspect_ratio=(4, 3)):
     """
-    创建缩略图 - 中心裁剪为4:3比例后缩放到指定大小(2048x1532)
+    创建缩略图 - 中心裁剪为4:3比例后缩放到指定大小(4096x3072)
     返回: ContentFile对象
     """
     try:

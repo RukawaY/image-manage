@@ -20,6 +20,13 @@ import {
   RadioGroup,
   FormControlLabel,
   Radio,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  CircularProgress,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import {
   Home as HomeIcon,
@@ -31,9 +38,11 @@ import {
   FilterList as FilterIcon,
   Menu as MenuIcon,
   Add as AddIcon,
+  CloudUpload as UploadIcon,
 } from '@mui/icons-material';
-import { useState, createContext, useContext } from 'react';
+import { useState, createContext, useContext, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { imageAPI } from '../services/api';
 
 const drawerWidth = 240;
 
@@ -64,6 +73,12 @@ export default function MainLayout() {
   const [searchQuery, setSearchQuery] = useState('');
   const [ordering, setOrdering] = useState('-uploaded_at');
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadForm, setUploadForm] = useState({ title: '', description: '' });
+  const [uploading, setUploading] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const sortRef = useRef(null);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -107,6 +122,61 @@ export default function MainLayout() {
   const handleSearchClear = () => {
     setSearchQuery('');
   };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        showSnackbar('请选择图片文件', 'error');
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile) {
+      showSnackbar('请选择要上传的图片', 'error');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    formData.append('title', uploadForm.title || selectedFile.name);
+    formData.append('description', uploadForm.description);
+
+    try {
+      setUploading(true);
+      await imageAPI.upload(formData);
+      showSnackbar('上传成功', 'success');
+      setUploadDialogOpen(false);
+      setSelectedFile(null);
+      setUploadForm({ title: '', description: '' });
+      setUploadSuccess(true); // 标记上传成功，通知子页面刷新
+    } catch (error) {
+      showSnackbar('上传失败', 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const showSnackbar = (message, severity = 'success') => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  // 点击外部关闭排序选项
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (sortExpanded && sortRef.current && !sortRef.current.contains(event.target)) {
+        setSortExpanded(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [sortExpanded]);
 
   const sortOptions = [
     { label: '上传时间（从新到旧）', value: '-uploaded_at' },
@@ -168,6 +238,8 @@ export default function MainLayout() {
     setOrdering,
     uploadDialogOpen,
     setUploadDialogOpen,
+    uploadSuccess,
+    setUploadSuccess,
   };
 
   return (
@@ -292,6 +364,7 @@ export default function MainLayout() {
 
         {/* 排序选项下拉面板 */}
         <Box
+          ref={sortRef}
           sx={{
             maxHeight: sortExpanded ? '300px' : '0px',
             overflow: 'hidden',
@@ -362,6 +435,69 @@ export default function MainLayout() {
       >
         <Outlet />
       </Box>
+
+      {/* 上传对话框 */}
+      <Dialog open={uploadDialogOpen} onClose={() => setUploadDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>上传图片</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <input
+              accept="image/*"
+              style={{ display: 'none' }}
+              id="file-upload"
+              type="file"
+              onChange={handleFileSelect}
+            />
+            <label htmlFor="file-upload">
+              <Button
+                variant="outlined"
+                component="span"
+                startIcon={<UploadIcon />}
+                fullWidth
+                sx={{ mb: 2 }}
+              >
+                选择图片
+              </Button>
+            </label>
+            {selectedFile && (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                已选择: {selectedFile.name}
+              </Typography>
+            )}
+            <TextField
+              fullWidth
+              label="标题"
+              value={uploadForm.title}
+              onChange={(e) => setUploadForm({ ...uploadForm, title: e.target.value })}
+              margin="normal"
+            />
+            <TextField
+              fullWidth
+              label="描述"
+              value={uploadForm.description}
+              onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
+              margin="normal"
+              multiline
+              rows={3}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setUploadDialogOpen(false)}>取消</Button>
+          <Button onClick={handleUpload} disabled={uploading || !selectedFile} variant="contained">
+            {uploading ? <CircularProgress size={24} /> : '上传'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 提示信息 */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+      </Snackbar>
     </Box>
     </SearchFilterContext.Provider>
   );

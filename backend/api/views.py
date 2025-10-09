@@ -369,9 +369,11 @@ class TagViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def popular(self, request):
         """获取热门标签（按使用次数排序）"""
-        tags = Tag.objects.annotate(
+        # 只显示当前用户图片的标签
+        user_images = Image.objects.filter(user=request.user)
+        tags = Tag.objects.filter(images__in=user_images).annotate(
             usage_count=Count('images')
-        ).filter(usage_count__gt=0).order_by('-usage_count')[:20]
+        ).filter(usage_count__gt=0).order_by('-usage_count').distinct()[:10]
         
         serializer = self.get_serializer(tags, many=True)
         return Response(serializer.data)
@@ -379,9 +381,11 @@ class TagViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def all_tags(self, request):
         """获取所有标签（按名称排序）"""
-        tags = Tag.objects.annotate(
+        # 只显示当前用户图片的标签
+        user_images = Image.objects.filter(user=request.user)
+        tags = Tag.objects.filter(images__in=user_images).annotate(
             usage_count=Count('images')
-        ).filter(usage_count__gt=0).order_by('name')
+        ).filter(usage_count__gt=0).order_by('name').distinct()
         
         serializer = self.get_serializer(tags, many=True)
         return Response(serializer.data)
