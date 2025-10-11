@@ -103,9 +103,9 @@ def extract_exif_data(image_path):
                     exif_data['tags'].append(f"位置: {lat:.2f}°, {lon:.2f}°")
                 has_location = True
         
-        # 如果没有GPS信息，添加"未知位置"标签
-        if not has_location:
-            exif_data['tags'].append("未知位置")
+        # # 如果没有GPS信息，添加"未知位置"标签
+        # if not has_location:
+        #     exif_data['tags'].append("未知位置")
         
         # 提取相机信息作为标签
         if 'Exif' in exif_dict:
