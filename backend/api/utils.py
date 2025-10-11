@@ -231,6 +231,18 @@ def edit_image(image_path, operations):
             enhancer = ImageEnhance.Color(img)
             img = enhancer.enhance(operations['saturation'])
         
+        # 处理RGBA模式：转换为RGB
+        if img.mode in ('RGBA', 'LA', 'P'):
+            # 创建白色背景
+            background = PILImage.new('RGB', img.size, (255, 255, 255))
+            if img.mode == 'P':
+                img = img.convert('RGBA')
+            background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
+            img = background
+        elif img.mode not in ('RGB', 'L'):
+            # 其他模式也转换为RGB
+            img = img.convert('RGB')
+        
         # 保存到内存
         output = BytesIO()
         img.save(output, format='JPEG', quality=90)
