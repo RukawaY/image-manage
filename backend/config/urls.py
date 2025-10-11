@@ -37,6 +37,10 @@ urlpatterns = [
     path('api/auth/user/update/', views.update_user_view, name='update_user'),
     path('api/auth/user/avatar/', views.upload_avatar_view, name='upload_avatar'),
     
+    # AI相关
+    path('api/ai/analyze/', views.ai_analyze_image, name='ai_analyze'),
+    path('api/ai/search/', views.ai_search_images_view, name='ai_search'),
+    
     # API路由
     path('api/', include(router.urls)),
 ]

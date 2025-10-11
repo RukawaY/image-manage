@@ -315,7 +315,6 @@ export default function TagEditor({ open, onClose, image, onSave }) {
                       {/* 标签本体 */}
                       <Chip
                         label={tag.name}
-                        color="primary"
                         variant="filled"
                         sx={{
                           height: 40,
@@ -323,10 +322,10 @@ export default function TagEditor({ open, onClose, image, onSave }) {
                           fontWeight: 600,
                           fontSize: '0.95rem',
                           transition: 'all 0.2s',
-                          bgcolor: 'primary.main',
+                          bgcolor: tag.source === 'user' ? '#4CAF50' : tag.source === 'ai' ? '#2196F3' : tag.source === 'exif' ? '#FF9800' : '#9E9E9E',
                           color: 'white',
                           '&:hover': {
-                            bgcolor: 'primary.dark',
+                            opacity: 0.8,
                             transform: 'translateY(-2px)',
                             boxShadow: 3,
                           },

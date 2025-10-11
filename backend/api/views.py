@@ -15,6 +15,7 @@ from .serializers import (
     ImageSerializer, ImageUploadSerializer, TagSerializer
 )
 from .utils import extract_exif_data, create_thumbnail, edit_image
+from .ai_service import analyze_image_with_ai, ai_search_images
 
 
 @api_view(['POST'])
@@ -269,14 +270,16 @@ class ImageViewSet(viewsets.ModelViewSet):
             )
         
         tag_names = request.data.get('tags', [])
+        tag_source = request.data.get('source', 'user')  # 默认为用户标签，可以是 'ai' 或 'user'
         added_tags = []
         
         for tag_name in tag_names:
             if tag_name:
-                tag, created = Tag.objects.get_or_create(
-                    name=tag_name,
-                    defaults={'source': 'user'}
-                )
+                # 先尝试获取已存在的标签
+                tag = Tag.objects.filter(name=tag_name).first()
+                if not tag:
+                    # 如果不存在，创建新标签
+                    tag = Tag.objects.create(name=tag_name, source=tag_source)
                 image.tags.add(tag)
                 added_tags.append(tag)
         
@@ -411,3 +414,84 @@ class TagViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(tags, many=True)
         return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def ai_analyze_image(request):
+    """AI分析图片，生成描述和标签"""
+    if 'image' not in request.FILES:
+        return Response(
+            {'error': '请提供图片文件'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        # 保存临时图片
+        image_file = request.FILES['image']
+        temp_image = Image(user=request.user, file_path=image_file)
+        temp_image.save()
+        
+        # 调用AI分析
+        result = analyze_image_with_ai(temp_image.file_path.path)
+        
+        # 删除临时图片
+        if os.path.isfile(temp_image.file_path.path):
+            os.remove(temp_image.file_path.path)
+        temp_image.delete()
+        
+        return Response(result)
+        
+    except Exception as e:
+        return Response(
+            {'error': f'AI分析失败: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def ai_search_images_view(request):
+    """AI检索图片"""
+    query = request.data.get('query', '')
+    if not query:
+        return Response(
+            {'error': '请提供搜索关键词'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        # 获取用户的所有图片信息
+        user_images = Image.objects.filter(user=request.user).values('id', 'title', 'description')
+        images_data = [
+            {
+                'id': img['id'],
+                'title': img['title'] or '无标题',
+                'description': img['description'] or '无描述'
+            }
+            for img in user_images
+        ]
+        
+        # 调用AI检索
+        image_ids = ai_search_images(query, images_data)
+        
+        # 获取对应的图片对象
+        images = Image.objects.filter(id__in=image_ids, user=request.user)
+        
+        # 按照AI返回的顺序排序
+        images_dict = {img.id: img for img in images}
+        sorted_images = [images_dict[img_id] for img_id in image_ids if img_id in images_dict]
+        
+        # 序列化返回
+        serializer = ImageSerializer(sorted_images, many=True, context={'request': request})
+        return Response({
+            'query': query,
+            'results': serializer.data,
+            'count': len(serializer.data)
+        })
+        
+    except Exception as e:
+        return Response(
+            {'error': f'AI检索失败: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

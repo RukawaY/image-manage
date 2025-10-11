@@ -89,11 +89,23 @@ export const imageAPI = {
   delete: (id) => api.delete(`/images/${id}/`),
   edit: (id, operations) => api.post(`/images/${id}/edit/`, { operations }),
   updateTags: (id, data) => api.patch(`/images/${id}/`, data),
-  addTags: (id, tags) => api.post(`/images/${id}/add_tags/`, { tags }),
+  addTags: (id, tags, source = 'user') => api.post(`/images/${id}/add_tags/`, { tags, source }),
   removeTags: (id, tag_ids) => api.post(`/images/${id}/remove_tags/`, { tag_ids }),
   favorite: (id) => api.post(`/images/${id}/favorite/`),
   unfavorite: (id) => api.post(`/images/${id}/unfavorite/`),
   getFavorites: (params) => api.get('/images/favorites/', { params }),
+};
+
+// AI相关API
+export const aiAPI = {
+  analyzeImage: (formData) => {
+    return api.post('/ai/analyze/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  searchImages: (query) => api.post('/ai/search/', { query }),
 };
 
 // 标签相关API

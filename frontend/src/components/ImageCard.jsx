@@ -80,9 +80,40 @@ export default function ImageCard({ image, onFavorite, onDelete, onEdit, onCrop,
         )}
         {image.tags && image.tags.length > 0 && (
           <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ mt: 1 }}>
-            {image.tags.slice(0, 3).map((tag) => (
-              <Chip key={tag.id} label={tag.name} size="small" sx={{ mt: 0.5 }} />
-            ))}
+            {/* 按优先级排序：user > ai > exif */}
+            {image.tags
+              .sort((a, b) => {
+                const priority = { user: 0, ai: 1, exif: 2 };
+                return priority[a.source] - priority[b.source];
+              })
+              .slice(0, 3)
+              .map((tag) => {
+                // 根据来源设置不同颜色
+                const getTagColor = (source) => {
+                  switch (source) {
+                    case 'user':
+                      return { bgcolor: '#4CAF50', color: '#fff' }; // 绿色 - 用户标签
+                    case 'ai':
+                      return { bgcolor: '#2196F3', color: '#fff' }; // 蓝色 - AI标签
+                    case 'exif':
+                      return { bgcolor: '#FF9800', color: '#fff' }; // 橙色 - EXIF标签
+                    default:
+                      return { bgcolor: '#9E9E9E', color: '#fff' }; // 灰色 - 默认
+                  }
+                };
+                
+                return (
+                  <Chip
+                    key={tag.id}
+                    label={tag.name}
+                    size="small"
+                    sx={{
+                      mt: 0.5,
+                      ...getTagColor(tag.source),
+                    }}
+                  />
+                );
+              })}
             {image.tags.length > 3 && (
               <Chip label={`+${image.tags.length - 3}`} size="small" sx={{ mt: 0.5 }} />
             )}
