@@ -88,6 +88,7 @@ export const imageAPI = {
   update: (id, data) => api.patch(`/images/${id}/`, data),
   delete: (id) => api.delete(`/images/${id}/`),
   edit: (id, operations) => api.post(`/images/${id}/edit/`, { operations }),
+  updateTags: (id, data) => api.patch(`/images/${id}/`, data),
   addTags: (id, tags) => api.post(`/images/${id}/add_tags/`, { tags }),
   removeTags: (id, tag_ids) => api.post(`/images/${id}/remove_tags/`, { tag_ids }),
   favorite: (id) => api.post(`/images/${id}/favorite/`),

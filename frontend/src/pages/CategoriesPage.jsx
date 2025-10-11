@@ -13,6 +13,8 @@ import {
 import { tagAPI, imageAPI } from '../services/api';
 import ImageCard from '../components/ImageCard';
 import ImageSlideshow from '../components/ImageSlideshow';
+import ImageEditor from '../components/ImageEditor';
+import TagEditor from '../components/TagEditor';
 
 export default function CategoriesPage() {
   const [popularTags, setPopularTags] = useState([]);
@@ -21,6 +23,10 @@ export default function CategoriesPage() {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [slideshowOpen, setSlideshowOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [tagEditorOpen, setTagEditorOpen] = useState(false);
+  const [cropMode, setCropMode] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
@@ -69,6 +75,48 @@ export default function CategoriesPage() {
       loadImages();
     } catch (error) {
       showSnackbar('操作失败', 'error');
+    }
+  };
+
+  const handleEditImage = (image) => {
+    setSelectedImage(image);
+    setCropMode(false);
+    setEditorOpen(true);
+  };
+
+  const handleCropImage = (image) => {
+    setSelectedImage(image);
+    setCropMode(true);
+    setEditorOpen(true);
+  };
+
+  const handleEditTags = (image) => {
+    setSelectedImage(image);
+    setTagEditorOpen(true);
+  };
+
+  const handleEditorSave = () => {
+    setEditorOpen(false);
+    setCropMode(false);
+    showSnackbar('图片编辑成功', 'success');
+    loadImages();
+  };
+
+  const handleTagsSave = () => {
+    setTagEditorOpen(false);
+    showSnackbar('标签更新成功', 'success');
+    loadImages();
+  };
+
+  const handleDelete = async (image) => {
+    if (window.confirm('确定要删除这张图片吗？')) {
+      try {
+        await imageAPI.delete(image.id);
+        showSnackbar('删除成功', 'success');
+        loadImages();
+      } catch (error) {
+        showSnackbar('删除失败', 'error');
+      }
     }
   };
 
@@ -132,6 +180,10 @@ export default function CategoriesPage() {
                   <ImageCard
                     image={image}
                     onFavorite={handleFavorite}
+                    onEdit={() => handleEditImage(image)}
+                    onCrop={() => handleCropImage(image)}
+                    onEditTags={() => handleEditTags(image)}
+                    onDelete={() => handleDelete(image)}
                     onClick={() => {
                       setSelectedImageIndex(index);
                       setSlideshowOpen(true);
@@ -149,6 +201,26 @@ export default function CategoriesPage() {
         onClose={() => setSlideshowOpen(false)}
         images={images}
         initialIndex={selectedImageIndex}
+      />
+
+      {/* 图片编辑器 */}
+      <ImageEditor
+        open={editorOpen}
+        onClose={() => {
+          setEditorOpen(false);
+          setCropMode(false);
+        }}
+        image={selectedImage}
+        onSave={handleEditorSave}
+        defaultMode={cropMode ? 'crop' : 'adjust'}
+      />
+
+      {/* 标签编辑器 */}
+      <TagEditor
+        open={tagEditorOpen}
+        onClose={() => setTagEditorOpen(false)}
+        image={selectedImage}
+        onSave={handleTagsSave}
       />
 
       <Snackbar

@@ -41,7 +41,12 @@ def extract_exif_data(image_path):
         img = ImageOps.exif_transpose(img)
         
         # 提取EXIF信息
-        exif_dict = piexif.load(img.info.get('exif', b''))
+        exif_dict = {}
+        try:
+            exif_dict = piexif.load(img.info.get('exif', b''))
+        except Exception as exif_err:
+            print(f"无法读取EXIF信息（可能是PNG等格式）: {str(exif_err)}")
+            # 继续执行，使用默认值
         
         # 提取拍摄时间
         shot_datetime = None

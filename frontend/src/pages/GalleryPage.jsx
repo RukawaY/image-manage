@@ -19,12 +19,16 @@ import {
 import { imageAPI } from '../services/api';
 import ImageCard from '../components/ImageCard';
 import ImageSlideshow from '../components/ImageSlideshow';
+import ImageEditor from '../components/ImageEditor';
+import TagEditor from '../components/TagEditor';
 import { useSearchFilter } from '../layouts/MainLayout';
 
 export default function GalleryPage() {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tagDialogOpen, setTagDialogOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [cropMode, setCropMode] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [newTags, setNewTags] = useState('');
   const [slideshowOpen, setSlideshowOpen] = useState(false);
@@ -91,6 +95,36 @@ export default function GalleryPage() {
   const handleImageClick = (index) => {
     setSelectedImageIndex(index);
     setSlideshowOpen(true);
+  };
+
+  const handleEditImage = (image) => {
+    setSelectedImage(image);
+    setCropMode(false);
+    setEditorOpen(true);
+  };
+
+  const handleCropImage = (image) => {
+    setSelectedImage(image);
+    setCropMode(true);
+    setEditorOpen(true);
+  };
+
+  const handleEditorSave = () => {
+    setEditorOpen(false);
+    setCropMode(false);
+    showSnackbar('图片编辑成功', 'success');
+    loadImages();
+  };
+
+  const handleEditTags = (image) => {
+    setSelectedImage(image);
+    setTagDialogOpen(true);
+  };
+
+  const handleTagsSave = () => {
+    setTagDialogOpen(false);
+    showSnackbar('标签更新成功', 'success');
+    loadImages();
   };
 
   const handleAddTags = (image) => {
@@ -161,7 +195,9 @@ export default function GalleryPage() {
                 image={image}
                 onFavorite={handleFavorite}
                 onDelete={handleDelete}
-                onEdit={() => handleAddTags(image)}
+                onEdit={() => handleEditImage(image)}
+                onCrop={() => handleCropImage(image)}
+                onEditTags={() => handleEditTags(image)}
                 onClick={() => handleImageClick(index)}
               />
             </Grid>
@@ -176,8 +212,28 @@ export default function GalleryPage() {
         initialIndex={selectedImageIndex}
       />
 
+      {/* 图片编辑器 */}
+      <ImageEditor
+        open={editorOpen}
+        onClose={() => {
+          setEditorOpen(false);
+          setCropMode(false);
+        }}
+        image={selectedImage}
+        onSave={handleEditorSave}
+        defaultMode={cropMode ? 'crop' : 'adjust'}
+      />
+
       {/* 标签编辑对话框 */}
-      <Dialog open={tagDialogOpen} onClose={() => setTagDialogOpen(false)} maxWidth="sm" fullWidth>
+      <TagEditor
+        open={tagDialogOpen}
+        onClose={() => setTagDialogOpen(false)}
+        image={selectedImage}
+        onSave={handleTagsSave}
+      />
+
+      {/* 旧的标签编辑对话框 - 可以保留或删除 */}
+      <Dialog open={false} onClose={() => setTagDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>编辑标签</DialogTitle>
         <DialogContent>
           <TextField

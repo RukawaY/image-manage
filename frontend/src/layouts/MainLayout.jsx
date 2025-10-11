@@ -108,6 +108,7 @@ export default function MainLayout() {
   };
 
   const handleSortToggle = () => {
+    // 如果已经展开，则收回；如果未展开，则展开
     setSortExpanded(!sortExpanded);
     if (!sortExpanded) {
       setSearchExpanded(false);
@@ -164,7 +165,7 @@ export default function MainLayout() {
     setSnackbar({ open: true, message, severity });
   };
 
-  // 点击外部关闭排序选项
+  // 点击外部关闭排序选项（handleSortToggle已经处理了筛选按钮的点击）
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (sortExpanded && sortRef.current && !sortRef.current.contains(event.target)) {

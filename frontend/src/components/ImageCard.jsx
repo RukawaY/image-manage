@@ -14,13 +14,16 @@ import {
   FavoriteBorder as FavoriteBorderIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
+  Crop as CropIcon,
+  Label as LabelIcon,
 } from '@mui/icons-material';
 
-export default function ImageCard({ image, onFavorite, onDelete, onEdit, onClick }) {
+export default function ImageCard({ image, onFavorite, onDelete, onEdit, onCrop, onEditTags, onClick }) {
   return (
     <Card
       sx={{
-        height: '100%',
+        width: 320,
+        height: 400,
         display: 'flex',
         flexDirection: 'column',
         cursor: 'pointer',
@@ -34,7 +37,8 @@ export default function ImageCard({ image, onFavorite, onDelete, onEdit, onClick
       <Box
         sx={{
           position: 'relative',
-          paddingTop: '75%', // 4:3 aspect ratio
+          width: 320,
+          height: 240,
           overflow: 'hidden',
           bgcolor: 'grey.200',
         }}
@@ -87,7 +91,8 @@ export default function ImageCard({ image, onFavorite, onDelete, onEdit, onClick
       </CardContent>
 
       <CardActions sx={{ justifyContent: 'space-between', px: 2, py: 1 }}>
-        <Box>
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
+          {/* 收藏按钮 */}
           <IconButton
             size="small"
             onClick={(e) => {
@@ -95,9 +100,12 @@ export default function ImageCard({ image, onFavorite, onDelete, onEdit, onClick
               onFavorite(image);
             }}
             color={image.is_favorited ? 'error' : 'default'}
+            title="收藏"
           >
             {image.is_favorited ? <FavoriteIcon /> : <FavoriteBorderIcon />}
           </IconButton>
+          
+          {/* 编辑图片按钮 */}
           {onEdit && (
             <IconButton
               size="small"
@@ -105,11 +113,42 @@ export default function ImageCard({ image, onFavorite, onDelete, onEdit, onClick
                 e.stopPropagation();
                 onEdit(image);
               }}
+              title="编辑图片"
             >
               <EditIcon />
             </IconButton>
           )}
+          
+          {/* 裁切按钮 */}
+          {onCrop && (
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                onCrop(image);
+              }}
+              title="裁切"
+            >
+              <CropIcon />
+            </IconButton>
+          )}
+          
+          {/* 修改标签按钮 */}
+          {onEditTags && (
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditTags(image);
+              }}
+              title="修改标签"
+            >
+              <LabelIcon />
+            </IconButton>
+          )}
         </Box>
+        
+        {/* 删除按钮 */}
         {onDelete && (
           <IconButton
             size="small"
@@ -118,6 +157,7 @@ export default function ImageCard({ image, onFavorite, onDelete, onEdit, onClick
               e.stopPropagation();
               onDelete(image);
             }}
+            title="删除"
           >
             <DeleteIcon />
           </IconButton>

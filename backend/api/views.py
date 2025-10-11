@@ -366,6 +366,28 @@ class TagViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ['name']
     
+    def create(self, request, *args, **kwargs):
+        """创建标签（如果已存在则返回现有标签）"""
+        tag_name = request.data.get('name', '').strip()
+        if not tag_name:
+            return Response(
+                {'error': '标签名称不能为空'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 尝试获取已存在的标签
+        tag = Tag.objects.filter(name=tag_name).first()
+        if tag:
+            serializer = self.get_serializer(tag)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        # 创建新标签
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    
     @action(detail=False, methods=['get'])
     def popular(self, request):
         """获取热门标签（按使用次数排序）"""
