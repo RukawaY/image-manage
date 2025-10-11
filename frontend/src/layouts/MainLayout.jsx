@@ -630,6 +630,11 @@ export default function MainLayout() {
             </Box>
           </Box>
         </DialogContent>
+
+        <Typography variant="caption" color="text.secondary" sx={{ pl: 3}}>
+          Powered by Google Gemini 2.0 Flash
+        </Typography>
+
         <DialogActions>
           <Button onClick={() => {
             setUploadDialogOpen(false);

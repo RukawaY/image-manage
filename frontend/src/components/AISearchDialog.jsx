@@ -249,7 +249,7 @@ export default function AISearchDialog({ open, onClose, onImageClick }) {
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Typography variant="caption" color="text.secondary" sx={{ flexGrow: 1 }}>
-          由 Google Gemini AI 驱动
+          Powered by Google Gemini 2.0 Flash
         </Typography>
         <Button onClick={handleClose}>关闭</Button>
       </DialogActions>
