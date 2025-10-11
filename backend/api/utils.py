@@ -140,9 +140,9 @@ def convert_to_degrees(value):
     return d + (m / 60.0) + (s / 3600.0)
 
 
-def create_thumbnail(image_file, target_size=(4096, 3072), aspect_ratio=(4, 3)):
+def create_thumbnail(image_file, target_size=(512, 384), aspect_ratio=(4, 3)):
     """
-    创建缩略图 - 中心裁剪为4:3比例后缩放到指定大小(4096x3072)
+    创建缩略图 - 中心裁剪为4:3比例后缩放到指定大小(512x384)
     返回: ContentFile对象
     """
     try:
