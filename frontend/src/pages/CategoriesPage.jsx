@@ -145,7 +145,7 @@ export default function CategoriesPage() {
         <Typography variant="h5" gutterBottom sx={{ mt: 4 }}>
           所有标签
         </Typography>
-        <Stack direction="row" spacing={1} flexWrap="wrap">
+        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ rowGap: 1 }} >
           {allTags.map((tag) => (
             <Chip
               key={tag.id}

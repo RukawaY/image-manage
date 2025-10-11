@@ -173,9 +173,61 @@ export default function TagEditor({ open, onClose, image, onSave }) {
         <Box>
           {/* 上排：当前图片的标签展示区 */}
           <Box sx={{ mb: 4 , mt: 2}}>
-            <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'text.secondary' }}>
-              标签列表
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 2 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                标签列表
+              </Typography>
+              
+              {/* 颜色图例 */}
+              <Box sx={{ 
+                display: 'flex', 
+                marginLeft: 'auto',
+                alignItems: 'center', 
+                gap: 1.5,
+                px: 1.5,
+                py: 0.5,
+                bgcolor: 'grey.100',
+                borderRadius: 1,
+                border: '1px solid',
+                borderColor: 'grey.300',
+              }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Box sx={{ 
+                    width: 12, 
+                    height: 12, 
+                    borderRadius: '50%', 
+                    bgcolor: '#4CAF50' 
+                  }} />
+                  <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+                    用户
+                  </Typography>
+                </Box>
+                
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Box sx={{ 
+                    width: 12, 
+                    height: 12, 
+                    borderRadius: '50%', 
+                    bgcolor: '#2196F3' 
+                  }} />
+                  <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+                    AI
+                  </Typography>
+                </Box>
+                
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Box sx={{ 
+                    width: 12, 
+                    height: 12, 
+                    borderRadius: '50%', 
+                    bgcolor: '#FF9800' 
+                  }} />
+                  <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+                    EXIF
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
             
             {imageTags.length === 0 ? (
               <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', py: 2 }}>

@@ -268,7 +268,7 @@ export default function MainLayout() {
       <Divider sx={{ my: 2 }} />
       
       {/* 上传按钮 */}
-      <Box sx={{ px: 2 }}>
+      <Box sx={{ px: 2, pt: 1 }}>
         <Button
           fullWidth
           variant="contained"
@@ -285,10 +285,10 @@ export default function MainLayout() {
         </Button>
       </Box>
       
-      <Box sx={{ flexGrow: 1 }} />
+      {/* <Box sx={{ flexGrow: 1 }} /> */}
       
       {/* AI检索按钮 */}
-      <Box sx={{ px: 2, pb: 2 }}>
+      <Box sx={{ px: 2, pb: 2 , pt: 2.3}}>
         <Button
           fullWidth
           variant="outlined"
