@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
-from .models import User, Image, Tag, ImageTag, Favorite
+from .models import User, Image, Tag, ImageTag, Favorite, Album, AlbumImage
 
 
 class UserRegisterSerializer(serializers.ModelSerializer):
@@ -226,4 +226,97 @@ class ImageUploadSerializer(serializers.ModelSerializer):
     class Meta:
         model = Image
         fields = ['file', 'title', 'description']
+
+
+class AlbumImageSerializer(serializers.ModelSerializer):
+    """相册中的图片序列化器（简化版）"""
+    file_url = serializers.SerializerMethodField()
+    thumbnail_url = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Image
+        fields = ['id', 'title', 'file_url', 'thumbnail_url']
+    
+    def get_file_url(self, obj):
+        request = self.context.get('request')
+        if obj.file_path and request:
+            return request.build_absolute_uri(obj.file_path.url)
+        return None
+    
+    def get_thumbnail_url(self, obj):
+        request = self.context.get('request')
+        if obj.thumbnail_path and request:
+            return request.build_absolute_uri(obj.thumbnail_path.url)
+        return None
+
+
+class AlbumSerializer(serializers.ModelSerializer):
+    """相册序列化器"""
+    user = UserSerializer(read_only=True)
+    image_count = serializers.SerializerMethodField()
+    preview_images = serializers.SerializerMethodField()
+    image_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False
+    )
+    
+    class Meta:
+        model = Album
+        fields = [
+            'id', 'user', 'name', 'description', 'image_count', 
+            'preview_images', 'image_ids', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+    
+    def get_image_count(self, obj):
+        return obj.images.count()
+    
+    def get_preview_images(self, obj):
+        # 获取相册前4张图片作为预览
+        images = obj.images.all()[:4]
+        return AlbumImageSerializer(images, many=True, context=self.context).data
+    
+    def create(self, validated_data):
+        image_ids = validated_data.pop('image_ids', [])
+        album = Album.objects.create(**validated_data)
+        
+        # 添加图片到相册
+        if image_ids:
+            images = Image.objects.filter(id__in=image_ids, user=album.user)
+            album.images.set(images)
+        
+        return album
+    
+    def update(self, instance, validated_data):
+        image_ids = validated_data.pop('image_ids', None)
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        # 更新相册中的图片
+        if image_ids is not None:
+            images = Image.objects.filter(id__in=image_ids, user=instance.user)
+            instance.images.set(images)
+        
+        return instance
+
+
+class AlbumDetailSerializer(serializers.ModelSerializer):
+    """相册详情序列化器"""
+    user = UserSerializer(read_only=True)
+    images = AlbumImageSerializer(many=True, read_only=True)
+    image_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Album
+        fields = [
+            'id', 'user', 'name', 'description', 
+            'images', 'image_count', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+    
+    def get_image_count(self, obj):
+        return obj.images.count()
 

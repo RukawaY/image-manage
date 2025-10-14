@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -12,10 +12,18 @@ import {
   Alert,
   CircularProgress,
   Divider,
+  Card,
+  CardContent,
 } from '@mui/material';
-import { CloudUpload as UploadIcon } from '@mui/icons-material';
+import {
+  CloudUpload as UploadIcon,
+  Image as ImageIcon,
+  PhotoAlbum as AlbumIcon,
+  Storage as StorageIcon,
+  TrendingUp as TrendingUpIcon,
+} from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import { authAPI } from '../services/api';
+import { authAPI, statisticsAPI } from '../services/api';
 
 export default function ProfilePage() {
   const { user, checkAuth } = useAuth();
@@ -30,6 +38,24 @@ export default function ProfilePage() {
   const [avatarFile, setAvatarFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [statistics, setStatistics] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  useEffect(() => {
+    loadStatistics();
+  }, []);
+
+  const loadStatistics = async () => {
+    try {
+      setStatsLoading(true);
+      const response = await statisticsAPI.getUserStatistics();
+      setStatistics(response.data);
+    } catch (error) {
+      console.error('加载统计数据失败:', error);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -137,12 +163,176 @@ export default function ProfilePage() {
   };
 
   return (
-    <Container maxWidth="md">
+    <Container maxWidth="lg">
       <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
         个人信息
       </Typography>
 
+      {/* 数据统计部分 */}
       <Paper sx={{ p: 4, mb: 3 }}>
+        <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
+          数据统计
+        </Typography>
+        
+        {statsLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : statistics ? (
+          <>
+            {/* 统计卡片 */}
+            <Grid container spacing={3} sx={{ mb: 4 }}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card sx={{ bgcolor: 'primary.light', color: 'white' }}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <ImageIcon sx={{ mr: 1 }} />
+                      <Typography variant="body2">图片总数</Typography>
+                    </Box>
+                    <Typography variant="h4" fontWeight="bold">
+                      {statistics.total_images}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card sx={{ bgcolor: 'secondary.light', color: 'white' }}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <AlbumIcon sx={{ mr: 1 }} />
+                      <Typography variant="body2">相册总数</Typography>
+                    </Box>
+                    <Typography variant="h4" fontWeight="bold">
+                      {statistics.total_albums}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card sx={{ bgcolor: 'success.light', color: 'white' }}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <StorageIcon sx={{ mr: 1 }} />
+                      <Typography variant="body2">占用空间</Typography>
+                    </Box>
+                    <Typography variant="h4" fontWeight="bold">
+                      {statistics.total_size_mb} MB
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card sx={{ bgcolor: 'warning.light', color: 'white' }}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <TrendingUpIcon sx={{ mr: 1 }} />
+                      <Typography variant="body2">平均大小</Typography>
+                    </Box>
+                    <Typography variant="h4" fontWeight="bold">
+                      {statistics.total_images > 0 
+                        ? (statistics.total_size_mb / statistics.total_images).toFixed(2) 
+                        : 0} MB
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+
+            {/* 按年份统计图表 */}
+            {statistics.yearly_stats && statistics.yearly_stats.length > 0 && (
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="subtitle1" gutterBottom fontWeight="medium">
+                  按年份上传统计
+                </Typography>
+                <Box sx={{ mt: 2 }}>
+                  {statistics.yearly_stats.map((stat, index) => {
+                    const maxCount = Math.max(...statistics.yearly_stats.map(s => s.count));
+                    const percentage = (stat.count / maxCount) * 100;
+                    return (
+                      <Box key={index} sx={{ mb: 2 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                          <Typography variant="body2">{stat.year}年</Typography>
+                          <Typography variant="body2" fontWeight="medium">
+                            {stat.count} 张
+                          </Typography>
+                        </Box>
+                        <Box
+                          sx={{
+                            width: '100%',
+                            height: 8,
+                            bgcolor: 'grey.200',
+                            borderRadius: 1,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              width: `${percentage}%`,
+                              height: '100%',
+                              bgcolor: 'primary.main',
+                              transition: 'width 0.3s ease',
+                            }}
+                          />
+                        </Box>
+                      </Box>
+                    );
+                  })}
+                </Box>
+              </Box>
+            )}
+
+            {/* 按月份统计图表 */}
+            {statistics.monthly_stats && statistics.monthly_stats.length > 0 && (
+              <Box>
+                <Typography variant="subtitle1" gutterBottom fontWeight="medium">
+                  近12个月上传统计
+                </Typography>
+                <Box sx={{ mt: 2 }}>
+                  {statistics.monthly_stats.map((stat, index) => {
+                    const maxCount = Math.max(...statistics.monthly_stats.map(s => s.count));
+                    const percentage = (stat.count / maxCount) * 100;
+                    return (
+                      <Box key={index} sx={{ mb: 2 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                          <Typography variant="body2">{stat.month}</Typography>
+                          <Typography variant="body2" fontWeight="medium">
+                            {stat.count} 张
+                          </Typography>
+                        </Box>
+                        <Box
+                          sx={{
+                            width: '100%',
+                            height: 8,
+                            bgcolor: 'grey.200',
+                            borderRadius: 1,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              width: `${percentage}%`,
+                              height: '100%',
+                              bgcolor: 'secondary.main',
+                              transition: 'width 0.3s ease',
+                            }}
+                          />
+                        </Box>
+                      </Box>
+                    );
+                  })}
+                </Box>
+              </Box>
+            )}
+          </>
+        ) : (
+          <Typography color="text.secondary">暂无统计数据</Typography>
+        )}
+      </Paper>
+
+      <Paper sx={{ p: 4, mb: 3 }}>
+      <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+          基本信息
+        </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
           <Avatar src={user?.avatar_url} alt={user?.username} sx={{ width: 100, height: 100, mr: 3 }}>
             {user?.username?.[0]?.toUpperCase()}
@@ -173,9 +363,6 @@ export default function ProfilePage() {
           </Box>
         </Box>
 
-        <Typography variant="h6" gutterBottom>
-          基本信息
-        </Typography>
         <Grid container spacing={2} sx={{ mb: 2 }}>
           <Grid item xs={12} sm={6}>
             <TextField
@@ -203,8 +390,6 @@ export default function ProfilePage() {
               name="bio"
               value={form.bio}
               onChange={handleChange}
-              multiline
-              rows={3}
             />
           </Grid>
         </Grid>

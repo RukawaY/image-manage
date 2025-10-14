@@ -103,3 +103,39 @@ class ImageTag(models.Model):
     
     def __str__(self):
         return f"{self.image} - {self.tag}"
+
+
+class Album(models.Model):
+    """相册模型"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='albums')
+    name = models.CharField(max_length=255, verbose_name='相册名称')
+    description = models.TextField(blank=True, null=True, verbose_name='相册简介')
+    images = models.ManyToManyField(Image, through='AlbumImage', related_name='albums', blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'albums'
+        verbose_name = '相册'
+        verbose_name_plural = '相册'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.name} - {self.user.username}"
+
+
+class AlbumImage(models.Model):
+    """相册图片关联模型"""
+    album = models.ForeignKey(Album, on_delete=models.CASCADE)
+    image = models.ForeignKey(Image, on_delete=models.CASCADE)
+    added_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'album_images'
+        unique_together = ['album', 'image']
+        verbose_name = '相册图片'
+        verbose_name_plural = '相册图片'
+        ordering = ['-added_at']
+    
+    def __str__(self):
+        return f"{self.album.name} - {self.image}"

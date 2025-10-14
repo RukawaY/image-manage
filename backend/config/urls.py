@@ -25,6 +25,7 @@ from api import views
 router = DefaultRouter()
 router.register(r'images', views.ImageViewSet, basename='image')
 router.register(r'tags', views.TagViewSet, basename='tag')
+router.register(r'albums', views.AlbumViewSet, basename='album')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -40,6 +41,9 @@ urlpatterns = [
     # AI相关
     path('api/ai/analyze/', views.ai_analyze_image, name='ai_analyze'),
     path('api/ai/search/', views.ai_search_images_view, name='ai_search'),
+    
+    # 统计相关
+    path('api/statistics/', views.user_statistics_view, name='user_statistics'),
     
     # API路由
     path('api/', include(router.urls)),

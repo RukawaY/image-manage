@@ -85,6 +85,13 @@ export const imageAPI = {
       },
     });
   },
+  batchUpload: (formData) => {
+    return api.post('/images/batch_upload/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
   update: (id, data) => api.patch(`/images/${id}/`, data),
   delete: (id) => api.delete(`/images/${id}/`),
   edit: (id, operations) => api.post(`/images/${id}/edit/`, { operations }),
@@ -117,6 +124,22 @@ export const tagAPI = {
   delete: (id) => api.delete(`/tags/${id}/`),
   popular: () => api.get('/tags/popular/'),
   allTags: () => api.get('/tags/all_tags/'),
+};
+
+// 相册相关API
+export const albumAPI = {
+  list: (params) => api.get('/albums/', { params }),
+  get: (id) => api.get(`/albums/${id}/`),
+  create: (data) => api.post('/albums/', data),
+  update: (id, data) => api.patch(`/albums/${id}/`, data),
+  delete: (id) => api.delete(`/albums/${id}/`),
+  addImages: (id, image_ids) => api.post(`/albums/${id}/add_images/`, { image_ids }),
+  removeImages: (id, image_ids) => api.post(`/albums/${id}/remove_images/`, { image_ids }),
+};
+
+// 统计相关API
+export const statisticsAPI = {
+  getUserStatistics: () => api.get('/statistics/'),
 };
 
 export default api;

@@ -3,16 +3,17 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import login, logout
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Sum
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils.decorators import method_decorator
 import os
+from datetime import datetime
 
-from .models import User, Image, Tag, ImageTag, Favorite
+from .models import User, Image, Tag, ImageTag, Favorite, Album, AlbumImage
 from .serializers import (
     UserRegisterSerializer, UserLoginSerializer, UserSerializer, UserUpdateSerializer,
-    ImageSerializer, ImageUploadSerializer, TagSerializer
+    ImageSerializer, ImageUploadSerializer, TagSerializer, AlbumSerializer, AlbumDetailSerializer
 )
 from .utils import extract_exif_data, create_thumbnail, edit_image
 from .ai_service import analyze_image_with_ai, ai_search_images
@@ -213,6 +214,102 @@ class ImageViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(image, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=False, methods=['post'])
+    def batch_upload(self, request):
+        """批量上传图片"""
+        files = request.FILES.getlist('files')
+        if not files:
+            return Response(
+                {'error': '请选择要上传的图片'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 获取每个图片的元数据（JSON格式）
+        import json
+        metadata_str = request.data.get('metadata', '[]')
+        try:
+            metadata_list = json.loads(metadata_str) if isinstance(metadata_str, str) else metadata_str
+        except:
+            metadata_list = []
+        
+        uploaded_images = []
+        errors = []
+        
+        for idx, file in enumerate(files):
+            try:
+                # 获取对应的元数据
+                metadata = metadata_list[idx] if idx < len(metadata_list) else {}
+                title = metadata.get('title', file.name)
+                description = metadata.get('description', '')
+                tag_names = metadata.get('tags', [])
+                
+                # 创建图片对象
+                image = Image(
+                    user=request.user,
+                    title=title,
+                    description=description,
+                    file_path=file
+                )
+                image.save()
+                
+                # 提取EXIF信息
+                try:
+                    exif_data = extract_exif_data(image.file_path.path)
+                    
+                    # 更新图片信息
+                    image.width = exif_data['width']
+                    image.height = exif_data['height']
+                    image.shot_at = exif_data['shot_at']
+                    image.location = exif_data['location']
+                    
+                    # 生成缩略图
+                    thumbnail = create_thumbnail(image.file_path.path)
+                    if thumbnail:
+                        thumbnail_name = f"thumb_{os.path.basename(image.file_path.name)}"
+                        image.thumbnail_path.save(thumbnail_name, thumbnail, save=False)
+                    
+                    image.save()
+                    
+                    # 创建EXIF标签
+                    for tag_name in exif_data['tags']:
+                        if tag_name:
+                            tag, created = Tag.objects.get_or_create(
+                                name=tag_name,
+                                defaults={'source': 'exif'}
+                            )
+                            image.tags.add(tag)
+                
+                except Exception as e:
+                    print(f"处理图片EXIF信息失败: {str(e)}")
+                
+                # 添加用户指定的标签
+                for tag_name in tag_names:
+                    if tag_name:
+                        tag, created = Tag.objects.get_or_create(
+                            name=tag_name,
+                            defaults={'source': 'user'}
+                        )
+                        image.tags.add(tag)
+                
+                uploaded_images.append(image)
+                
+            except Exception as e:
+                errors.append({
+                    'file': file.name,
+                    'error': str(e)
+                })
+        
+        # 序列化返回
+        serializer = self.get_serializer(uploaded_images, many=True, context={'request': request})
+        
+        return Response({
+            'message': f'成功上传 {len(uploaded_images)} 张图片',
+            'uploaded': len(uploaded_images),
+            'failed': len(errors),
+            'images': serializer.data,
+            'errors': errors
+        }, status=status.HTTP_201_CREATED)
     
     @action(detail=True, methods=['post'])
     def edit(self, request, pk=None):
@@ -495,3 +592,138 @@ def ai_search_images_view(request):
             {'error': f'AI检索失败: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+class AlbumViewSet(viewsets.ModelViewSet):
+    """相册视图集"""
+    queryset = Album.objects.all()
+    serializer_class = AlbumSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name', 'description']
+    ordering_fields = ['created_at', 'updated_at', 'name']
+    ordering = ['-created_at']
+    
+    def get_queryset(self):
+        """只显示当前用户的相册"""
+        return Album.objects.filter(user=self.request.user)
+    
+    def get_serializer_class(self):
+        """根据action选择序列化器"""
+        if self.action == 'retrieve':
+            return AlbumDetailSerializer
+        return AlbumSerializer
+    
+    def perform_create(self, serializer):
+        """创建相册时自动设置用户"""
+        serializer.save(user=self.request.user)
+    
+    @action(detail=True, methods=['post'])
+    def add_images(self, request, pk=None):
+        """向相册批量添加图片"""
+        album = self.get_object()
+        image_ids = request.data.get('image_ids', [])
+        
+        if not image_ids:
+            return Response(
+                {'error': '请提供要添加的图片ID'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 只能添加当前用户的图片
+        images = Image.objects.filter(id__in=image_ids, user=request.user)
+        album.images.add(*images)
+        
+        serializer = self.get_serializer(album)
+        return Response({
+            'message': f'已添加 {len(images)} 张图片',
+            'album': serializer.data
+        })
+    
+    @action(detail=True, methods=['post'])
+    def remove_images(self, request, pk=None):
+        """从相册批量移除图片"""
+        album = self.get_object()
+        image_ids = request.data.get('image_ids', [])
+        
+        if not image_ids:
+            return Response(
+                {'error': '请提供要移除的图片ID'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        images = Image.objects.filter(id__in=image_ids)
+        album.images.remove(*images)
+        
+        serializer = self.get_serializer(album)
+        return Response({
+            'message': f'已移除 {len(image_ids)} 张图片',
+            'album': serializer.data
+        })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def user_statistics_view(request):
+    """获取用户数据统计"""
+    from collections import defaultdict
+    from datetime import datetime
+    
+    user = request.user
+    
+    # 获取用户的所有图片
+    user_images = Image.objects.filter(user=user)
+    
+    # 图片总数
+    total_images = user_images.count()
+    
+    # 相册总数
+    total_albums = Album.objects.filter(user=user).count()
+    
+    # 总占用空间（字节）
+    total_size = 0
+    for image in user_images:
+        try:
+            if image.file_path and os.path.isfile(image.file_path.path):
+                total_size += os.path.getsize(image.file_path.path)
+        except:
+            pass
+    
+    # 使用 Python 代码统计年份和月份，避免 SQLite 时区问题
+    yearly_counts = defaultdict(int)
+    monthly_counts = defaultdict(int)
+    
+    for image in user_images:
+        if image.uploaded_at:
+            # 转换为本地时间
+            local_time = image.uploaded_at
+            if hasattr(local_time, 'astimezone'):
+                local_time = local_time.astimezone()
+            
+            # 统计年份
+            year = local_time.year
+            yearly_counts[year] += 1
+            
+            # 统计月份
+            month = local_time.strftime('%Y-%m')
+            monthly_counts[month] += 1
+    
+    # 格式化统计数据
+    yearly_data = [
+        {'year': year, 'count': count}
+        for year, count in sorted(yearly_counts.items())
+    ]
+    
+    monthly_data = [
+        {'month': month, 'count': count}
+        for month, count in sorted(monthly_counts.items())
+    ]
+    
+    return Response({
+        'total_images': total_images,
+        'total_albums': total_albums,
+        'total_size': total_size,
+        'total_size_mb': round(total_size / (1024 * 1024), 2),
+        'yearly_stats': yearly_data,
+        'monthly_stats': monthly_data[-12:]  # 最近12个月
+    })

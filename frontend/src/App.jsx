@@ -7,6 +7,7 @@ import HomePage from './pages/HomePage';
 import GalleryPage from './pages/GalleryPage';
 import CategoriesPage from './pages/CategoriesPage';
 import FavoritesPage from './pages/FavoritesPage';
+import AlbumsPage from './pages/AlbumsPage';
 import ProfilePage from './pages/ProfilePage';
 import { CircularProgress, Box } from '@mui/material';
 
@@ -136,6 +137,7 @@ function App() {
               <Route path="gallery" element={<GalleryPage />} />
               <Route path="categories" element={<CategoriesPage />} />
               <Route path="favorites" element={<FavoritesPage />} />
+              <Route path="albums" element={<AlbumsPage />} />
               <Route path="profile" element={<ProfilePage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
