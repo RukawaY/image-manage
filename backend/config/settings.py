@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-wm*wjc32otzbfv_4wjzags$)6yn8q6x0mx3*m6)59a#43iofa4
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']  # 允许所有主机访问（生产环境应该设置具体域名）
 
 
 # Application definition
@@ -59,8 +59,10 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',  # Vite开发服务器
     'http://localhost:3000',  # 备用端口
+    'http://localhost',       # Docker部署的前端（端口80）
     'http://127.0.0.1:5173',
     'http://127.0.0.1:3000',
+    'http://127.0.0.1',       # Docker部署的前端（端口80）
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # 允许携带Cookie
@@ -69,8 +71,10 @@ CORS_ALLOW_CREDENTIALS = True  # 允许携带Cookie
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:5173',
     'http://localhost:3000',
+    'http://localhost',       # Docker部署的前端（端口80）
     'http://127.0.0.1:5173',
     'http://127.0.0.1:3000',
+    'http://127.0.0.1',       # Docker部署的前端（端口80）
 ]
 
 # CSRF Cookie设置
