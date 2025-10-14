@@ -86,7 +86,7 @@ export default function ImageCard({ image, onFavorite, onDelete, onEdit, onCrop,
                 const priority = { user: 0, ai: 1, exif: 2 };
                 return priority[a.source] - priority[b.source];
               })
-              .slice(0, 4)
+              .slice(0, 3)
               .map((tag) => {
                 // 根据来源设置不同颜色
                 const getTagColor = (source) => {
@@ -114,8 +114,8 @@ export default function ImageCard({ image, onFavorite, onDelete, onEdit, onCrop,
                   />
                 );
               })}
-            {image.tags.length > 4 && (
-              <Chip label={`+${image.tags.length - 4}`} size="small" sx={{ mt: 0.5 }} />
+            {image.tags.length > 3 && (
+              <Chip label={`+${image.tags.length - 3}`} size="small" sx={{ mt: 0.5 }} />
             )}
           </Stack>
         )}
