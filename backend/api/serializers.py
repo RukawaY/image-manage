@@ -229,13 +229,19 @@ class ImageUploadSerializer(serializers.ModelSerializer):
 
 
 class AlbumImageSerializer(serializers.ModelSerializer):
-    """相册中的图片序列化器（简化版）"""
+    """相册中的图片序列化器"""
+    tags = TagSerializer(many=True, read_only=True)
     file_url = serializers.SerializerMethodField()
     thumbnail_url = serializers.SerializerMethodField()
+    is_favorited = serializers.SerializerMethodField()
     
     class Meta:
         model = Image
-        fields = ['id', 'title', 'file_url', 'thumbnail_url']
+        fields = [
+            'id', 'title', 'description', 'file_url', 'thumbnail_url',
+            'width', 'height', 'shot_at', 'location', 'uploaded_at',
+            'tags', 'is_favorited'
+        ]
     
     def get_file_url(self, obj):
         request = self.context.get('request')
@@ -248,6 +254,12 @@ class AlbumImageSerializer(serializers.ModelSerializer):
         if obj.thumbnail_path and request:
             return request.build_absolute_uri(obj.thumbnail_path.url)
         return None
+    
+    def get_is_favorited(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.favorited_by.filter(id=request.user.id).exists()
+        return False
 
 
 class AlbumSerializer(serializers.ModelSerializer):

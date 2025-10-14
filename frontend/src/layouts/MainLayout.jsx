@@ -52,9 +52,9 @@ const drawerWidth = 240;
 const menuItems = [
   { text: '首页', icon: <HomeIcon />, path: '/' },
   { text: '全部图片', icon: <CollectionsIcon />, path: '/gallery' },
+  { text: '个人相册', icon: <AlbumIcon />, path: '/albums' },
   { text: '图片分类', icon: <LabelIcon />, path: '/categories' },
   { text: '我的收藏', icon: <FavoriteIcon />, path: '/favorites' },
-  { text: '我的相册', icon: <AlbumIcon />, path: '/albums' },
   { text: '个人信息', icon: <PersonIcon />, path: '/profile' },
 ];
 

@@ -197,7 +197,7 @@ export default function AISearchDialog({ open, onClose, onImageClick }) {
                         )}
                         {image.tags && image.tags.length > 0 && (
                           <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ mt: 1 }}>
-                            {image.tags.slice(0, 4).map((tag) => {
+                            {image.tags.slice(0, 5).map((tag) => {
                               const getTagColor = (source) => {
                                 switch (source) {
                                   case 'user':

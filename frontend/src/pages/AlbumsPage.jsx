@@ -5,7 +5,9 @@ import {
   Card,
   CardActions,
   CardContent,
+  CardMedia,
   Checkbox,
+  Chip,
   CircularProgress,
   Container,
   Dialog,
@@ -14,6 +16,7 @@ import {
   DialogTitle,
   Grid,
   IconButton,
+  Stack,
   TextField,
   Typography,
   Snackbar,
@@ -51,6 +54,9 @@ export default function AlbumsPage() {
   const [openImageDialog, setOpenImageDialog] = useState(false);
   const [dialogMode, setDialogMode] = useState(''); // 'import' or 'remove' or 'create'
   const [albumImages, setAlbumImages] = useState([]);
+  const [openDetailDialog, setOpenDetailDialog] = useState(false);
+  const [detailAlbum, setDetailAlbum] = useState(null);
+  const [detailImages, setDetailImages] = useState([]);
 
   useEffect(() => {
     loadAlbums();
@@ -201,6 +207,29 @@ export default function AlbumsPage() {
     );
   };
 
+  const handleOpenAlbumDetail = async (album) => {
+    setDetailAlbum(album);
+    setOpenDetailDialog(true);
+    
+    // 加载相册完整详情（包含所有图片）
+    try {
+      const response = await albumAPI.get(album.id);
+      const albumDetail = response.data;
+      console.log(albumDetail);
+      setDetailImages(albumDetail.images || []);
+    } catch (error) {
+      console.error('加载相册详情失败:', error);
+      showSnackbar('加载相册详情失败', 'error');
+      setDetailImages([]);
+    }
+  };
+
+  const handleCloseAlbumDetail = () => {
+    setOpenDetailDialog(false);
+    setDetailAlbum(null);
+    setDetailImages([]);
+  };
+
   const handleImportImages = async () => {
     if (selectedImages.length === 0) {
       showSnackbar('请选择要导入的图片', 'warning');
@@ -274,7 +303,7 @@ export default function AlbumsPage() {
     <Container maxWidth="xl" sx={{ py: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, mt: -4.25 }}>
         <Typography variant="h5" component="h1">
-          我的相册
+          个人相册
         </Typography>
       </Box>
 
@@ -295,6 +324,7 @@ export default function AlbumsPage() {
               height: 400,
               display: 'flex',
               flexDirection: 'column',
+              cursor: 'pointer',
               transition: 'transform 0.2s, box-shadow 0.2s',
               '&:hover': {
                 transform: 'translateY(-4px)',
@@ -311,6 +341,7 @@ export default function AlbumsPage() {
                 overflow: 'hidden',
                 bgcolor: 'grey.200',
               }}
+              onClick={() => handleOpenAlbumDetail(album)}
             >
               {album.preview_images && album.preview_images.length > 0 ? (
                 <Box
@@ -576,6 +607,119 @@ export default function AlbumsPage() {
           <Button onClick={handleSubmit} variant="contained">
             {editingAlbum ? '保存' : '创建'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 相册详情对话框 */}
+      <Dialog 
+        open={openDetailDialog} 
+        onClose={handleCloseAlbumDetail} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{
+          sx: { maxHeight: '80vh' }
+        }}
+      >
+        <DialogTitle>
+          {detailAlbum?.name || '相册详情'}
+        </DialogTitle>
+        <DialogContent>
+          {detailImages.length > 0 ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+              {detailImages.map((image) => (
+                <Card
+                  key={image.id}
+                  sx={{
+                    display: 'flex',
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s, box-shadow 0.2s',
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: 4,
+                    },
+                  }}
+                >
+                  <CardMedia
+                    component="img"
+                    sx={{ width: 160, height: 120, objectFit: 'cover' }}
+                    image={image.thumbnail_url || image.file_url}
+                    alt={image.title}
+                  />
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Typography variant="h6" gutterBottom>
+                      {image.title || '无标题'}
+                    </Typography>
+                    {image.description && (
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                        }}
+                      >
+                        {image.description}
+                      </Typography>
+                    )}
+                    {image.tags && image.tags.length > 0 && (
+                      <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ mt: 1 }}>
+                        {image.tags.slice(0, 5).map((tag) => {
+                          const getTagColor = (source) => {
+                            switch (source) {
+                              case 'user':
+                                return { bgcolor: '#4CAF50', color: '#fff' };
+                              case 'ai':
+                                return { bgcolor: '#2196F3', color: '#fff' };
+                              case 'exif':
+                                return { bgcolor: '#FF9800', color: '#fff' };
+                              default:
+                                return { bgcolor: '#9E9E9E', color: '#fff' };
+                            }
+                          };
+                          
+                          return (
+                            <Chip
+                              key={tag.id}
+                              label={tag.name}
+                              size="small"
+                              sx={{
+                                mt: 0.5,
+                                ...getTagColor(tag.source),
+                              }}
+                            />
+                          );
+                        })}
+                      </Stack>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+          ) : (
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                py: 8,
+              }}
+            >
+              <CollectionsIcon sx={{ fontSize: 80, color: 'grey.400', mb: 2 }} />
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                相册内容为空
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                快去添加照片吧
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseAlbumDetail}>关闭</Button>
         </DialogActions>
       </Dialog>
 
