@@ -76,10 +76,10 @@ export default function MainLayout() {
   const [sortExpanded, setSortExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [ordering, setOrdering] = useState('-uploaded_at');
-  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [singleUploadDialogOpen, setSingleUploadDialogOpen] = useState(false);
+  const [batchUploadDialogOpen, setBatchUploadDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedFiles, setSelectedFiles] = useState([]);
-  const [batchMode, setBatchMode] = useState(false);
   const [uploadForm, setUploadForm] = useState({ title: '', description: '', tags: [] });
   const [batchForms, setBatchForms] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -135,7 +135,31 @@ export default function MainLayout() {
     setSearchQuery('');
   };
 
-  const handleFileSelect = async (e) => {
+  const handleSingleFileSelect = async (e) => {
+    const files = Array.from(e.target.files);
+    
+    if (files.length === 0) return;
+    
+    // 验证文件是图片
+    if (!files[0].type.startsWith('image/')) {
+      showSnackbar('请只选择图片文件', 'error');
+      return;
+    }
+    
+    setSelectedFile(files[0]);
+    setUploadForm({ 
+      title: files[0].name.replace(/\.[^/.]+$/, ''), 
+      description: '', 
+      tags: [] 
+    });
+    
+    // 如果启用了AI功能，自动分析图片
+    if (aiDescriptionEnabled || aiTagsEnabled) {
+      await analyzeImageWithAI(files[0]);
+    }
+  };
+
+  const handleBatchFileSelect = (e) => {
     const files = Array.from(e.target.files);
     
     if (files.length === 0) return;
@@ -147,27 +171,14 @@ export default function MainLayout() {
       return;
     }
     
-    if (files.length === 1) {
-      // 单文件模式
-      setBatchMode(false);
-      setSelectedFile(files[0]);
-      
-      // 如果启用了AI功能，自动分析图片
-      if (aiDescriptionEnabled || aiTagsEnabled) {
-        await analyzeImageWithAI(files[0]);
-      }
-    } else {
-      // 批量模式
-      setBatchMode(true);
-      setSelectedFiles(files);
-      // 初始化批量表单
-      const forms = files.map(file => ({
-        title: file.name.replace(/\.[^/.]+$/, ''), // 去掉扩展名
-        description: '',
-        tags: []
-      }));
-      setBatchForms(forms);
-    }
+    setSelectedFiles(files);
+    // 初始化批量表单
+    const forms = files.map(file => ({
+      title: file.name.replace(/\.[^/.]+$/, ''), // 去掉扩展名
+      description: '',
+      tags: []
+    }));
+    setBatchForms(forms);
   };
 
   const analyzeImageWithAI = async (file) => {
@@ -197,79 +208,76 @@ export default function MainLayout() {
     }
   };
 
-  const handleUpload = async () => {
-    if (batchMode) {
-      // 批量上传模式
-      if (selectedFiles.length === 0) {
-        showSnackbar('请选择要上传的图片', 'error');
-        return;
-      }
-      
-      const formData = new FormData();
-      selectedFiles.forEach(file => {
-        formData.append('files', file);
-      });
-      
-      // 添加元数据
-      formData.append('metadata', JSON.stringify(batchForms));
-      
-      try {
-        setUploading(true);
-        const response = await imageAPI.batchUpload(formData);
-        
-        showSnackbar(`成功上传 ${response.data.uploaded} 张图片`, 'success');
-        setUploadDialogOpen(false);
-        setSelectedFiles([]);
-        setBatchForms([]);
-        setBatchMode(false);
-        setUploadSuccess(true);
-      } catch (error) {
-        showSnackbar('批量上传失败', 'error');
-      } finally {
-        setUploading(false);
-      }
-    } else {
-      // 单张上传模式
-      if (!selectedFile) {
-        showSnackbar('请选择要上传的图片', 'error');
-        return;
-      }
+  const handleSingleUpload = async () => {
+    if (!selectedFile) {
+      showSnackbar('请选择要上传的图片', 'error');
+      return;
+    }
 
-      if (!uploadForm.title && !selectedFile.name) {
-        showSnackbar('请输入图片标题', 'error');
-        return;
-      }
+    if (!uploadForm.title) {
+      showSnackbar('请输入图片标题', 'error');
+      return;
+    }
 
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('title', uploadForm.title || selectedFile.name);
-      formData.append('description', uploadForm.description);
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    formData.append('title', uploadForm.title);
+    formData.append('description', uploadForm.description);
 
-      try {
-        setUploading(true);
-        const response = await imageAPI.upload(formData);
-        
-        // 如果有AI生成的标签，添加到图片上
-        if (aiTagsEnabled && uploadForm.tags && uploadForm.tags.length > 0) {
-          try {
-            await imageAPI.addTags(response.data.id, uploadForm.tags, 'ai');
-          } catch (error) {
-            console.error('添加标签失败:', error);
-          }
+    try {
+      setUploading(true);
+      const response = await imageAPI.upload(formData);
+      
+      // 如果有AI生成的标签，添加到图片上
+      if (aiTagsEnabled && uploadForm.tags && uploadForm.tags.length > 0) {
+        try {
+          await imageAPI.addTags(response.data.id, uploadForm.tags, 'ai');
+        } catch (error) {
+          console.error('添加标签失败:', error);
         }
-        
-        showSnackbar('上传成功', 'success');
-        setUploadDialogOpen(false);
-        setSelectedFile(null);
-        setUploadForm({ title: '', description: '', tags: [] });
-        setAiDescriptionEnabled(true);
-        setAiTagsEnabled(true);
-        setUploadSuccess(true);
-      } catch (error) {
-        showSnackbar('上传失败', 'error');
-      } finally {
-        setUploading(false);
       }
+      
+      showSnackbar('上传成功', 'success');
+      setSingleUploadDialogOpen(false);
+      setSelectedFile(null);
+      setUploadForm({ title: '', description: '', tags: [] });
+      setAiDescriptionEnabled(true);
+      setAiTagsEnabled(true);
+      setUploadSuccess(true);
+    } catch (error) {
+      showSnackbar('上传失败', 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleBatchUpload = async () => {
+    if (selectedFiles.length === 0) {
+      showSnackbar('请选择要上传的图片', 'error');
+      return;
+    }
+    
+    const formData = new FormData();
+    selectedFiles.forEach(file => {
+      formData.append('files', file);
+    });
+    
+    // 添加元数据
+    formData.append('metadata', JSON.stringify(batchForms));
+    
+    try {
+      setUploading(true);
+      const response = await imageAPI.batchUpload(formData);
+      
+      showSnackbar(`成功上传 ${response.data.uploaded} 张图片`, 'success');
+      setBatchUploadDialogOpen(false);
+      setSelectedFiles([]);
+      setBatchForms([]);
+      setUploadSuccess(true);
+    } catch (error) {
+      showSnackbar('批量上传失败', 'error');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -325,20 +333,34 @@ export default function MainLayout() {
       <Divider sx={{ my: 2 }} />
       
       {/* 上传按钮 */}
-      <Box sx={{ px: 2, pt: 1 }}>
+      <Box sx={{ px: 2, pt: 1, display: 'flex', flexDirection: 'column', gap: 2.2}}>
         <Button
           fullWidth
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => setUploadDialogOpen(true)}
+          onClick={() => setSingleUploadDialogOpen(true)}
           sx={{
-            background: 'rgb(120, 140, 231)',
+            background: 'rgb(103, 126, 230)',
             '&:hover': {
-              background: 'rgb(110, 130, 221)',
+              background: 'rgb(93, 116, 220)',
             },
           }}
         >
-          上传图片
+          单张上传
+        </Button>
+        <Button
+          fullWidth
+          variant="contained"
+          startIcon={<UploadIcon />}
+          onClick={() => setBatchUploadDialogOpen(true)}
+          sx={{
+            background: 'rgb(130, 150, 241)',
+            '&:hover': {
+              background: 'rgb(120, 140, 231)',
+            },
+          }}
+        >
+          批量上传
         </Button>
       </Box>
       
@@ -371,8 +393,6 @@ export default function MainLayout() {
     setSearchQuery,
     ordering,
     setOrdering,
-    uploadDialogOpen,
-    setUploadDialogOpen,
     uploadSuccess,
     setUploadSuccess,
   };
@@ -571,20 +591,24 @@ export default function MainLayout() {
         <Outlet />
       </Box>
 
-      {/* 上传对话框 */}
-      <Dialog open={uploadDialogOpen} onClose={() => setUploadDialogOpen(false)} maxWidth={batchMode ? "md" : "sm"} fullWidth>
-        <DialogTitle>{batchMode ? `批量上传图片 (${selectedFiles.length}张)` : '上传图片'}</DialogTitle>
+      {/* 单张上传对话框 */}
+      <Dialog 
+        open={singleUploadDialogOpen} 
+        onClose={() => setSingleUploadDialogOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+      >
+        <DialogTitle>单张上传</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             <input
               accept="image/*"
               style={{ display: 'none' }}
-              id="file-upload"
+              id="single-file-upload"
               type="file"
-              multiple
-              onChange={handleFileSelect}
+              onChange={handleSingleFileSelect}
             />
-            <label htmlFor="file-upload">
+            <label htmlFor="single-file-upload">
               <Button
                 variant="outlined"
                 component="span"
@@ -592,18 +616,236 @@ export default function MainLayout() {
                 fullWidth
                 sx={{ mb: 2 }}
               >
-                {batchMode ? '重新选择图片' : '选择图片'}
+                选择图片
               </Button>
             </label>
             
-            {batchMode ? (
-              // 批量上传模式
-              <Box sx={{ maxHeight: '400px', overflowY: 'auto' }}>
+            {selectedFile && (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                已选择: {selectedFile.name}
+              </Typography>
+            )}
+            {aiAnalyzing && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <CircularProgress size={20} />
+                <Typography variant="body2" color="primary">
+                  AI正在分析图片...
+                </Typography>
+              </Box>
+            )}
+            <TextField
+              fullWidth
+              label="标题（必填）"
+              value={uploadForm.title}
+              onChange={(e) => setUploadForm({ ...uploadForm, title: e.target.value })}
+              margin="normal"
+              required
+            />
+            <TextField
+              fullWidth
+              label="描述"
+              value={uploadForm.description}
+              onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
+              margin="normal"
+              multiline
+              rows={3}
+              disabled={aiDescriptionEnabled}
+              helperText={aiDescriptionEnabled ? "AI描述已启用" : ""}
+            />
+            
+            {uploadForm.tags && uploadForm.tags.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  AI生成的标签:
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  {uploadForm.tags.map((tag, index) => (
+                    <Box
+                      key={index}
+                      sx={{
+                        px: 1.5,
+                        py: 0.5,
+                        borderRadius: 1,
+                        bgcolor: 'primary.light',
+                        color: 'white',
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      {tag}
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            )}
+            
+            <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid #e0e0e0' }}>
+              <Typography variant="subtitle2" gutterBottom>
+                AI功能
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+                <Button
+                  variant={aiDescriptionEnabled ? "contained" : "outlined"}
+                  startIcon={<AiIcon />}
+                  size="small"
+                  onClick={() => {
+                    setAiDescriptionEnabled(!aiDescriptionEnabled);
+                    if (aiDescriptionEnabled) {
+                      setUploadForm({ ...uploadForm, description: '' });
+                    }
+                  }}
+                >
+                  {aiDescriptionEnabled ? "✓ AI生成描述" : "AI生成描述"}
+                </Button>
+                <Button
+                  variant={aiTagsEnabled ? "contained" : "outlined"}
+                  startIcon={<AiIcon />}
+                  size="small"
+                  onClick={() => {
+                    setAiTagsEnabled(!aiTagsEnabled);
+                    if (aiTagsEnabled) {
+                      setUploadForm({ ...uploadForm, tags: [] });
+                    }
+                  }}
+                >
+                  {aiTagsEnabled ? "✓ AI生成标签" : "AI生成标签"}
+                </Button>
+              </Box>
+            </Box>
+          </Box>
+        </DialogContent>
+
+        <Typography variant="caption" color="text.secondary" sx={{ pl: 3}}>
+          Powered by Google Gemini 2.0 Flash
+        </Typography>
+
+        <DialogActions>
+          <Button onClick={() => {
+            setSingleUploadDialogOpen(false);
+            setSelectedFile(null);
+            setUploadForm({ title: '', description: '', tags: [] });
+            setAiDescriptionEnabled(true);
+            setAiTagsEnabled(true);
+          }}>
+            取消
+          </Button>
+          <Button 
+            onClick={handleSingleUpload} 
+            disabled={uploading || !selectedFile || aiAnalyzing} 
+            variant="contained"
+          >
+            {uploading ? <CircularProgress size={24} /> : '上传'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 批量上传对话框 */}
+      <Dialog 
+        open={batchUploadDialogOpen} 
+        onClose={() => setBatchUploadDialogOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            maxHeight: '90vh'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          background: 'white',
+          color: 'black',
+          py: 2.5
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <UploadIcon />
+            <Typography variant="h6" component="span">
+              批量上传 {selectedFiles.length > 0 && `(${selectedFiles.length}张)`}
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 , mt: 1}}>
+          <Box>
+            <input
+              accept="image/*"
+              style={{ display: 'none' }}
+              id="batch-file-upload"
+              type="file"
+              multiple
+              onChange={handleBatchFileSelect}
+            />
+            <label htmlFor="batch-file-upload">
+              <Button
+                variant="outlined"
+                component="span"
+                startIcon={<UploadIcon />}
+                fullWidth
+                sx={{ 
+                  mb: 3,
+                  py: 1.5,
+                  borderRadius: 1.5,
+                  borderWidth: 2,
+                  borderStyle: 'dashed',
+                  borderColor: 'rgb(120, 140, 231)',
+                  color: 'rgb(120, 140, 231)',
+                  '&:hover': {
+                    borderWidth: 2,
+                    borderColor: 'rgb(110, 130, 221)',
+                    backgroundColor: 'rgba(120, 140, 231, 0.04)',
+                  }
+                }}
+              >
+                {selectedFiles.length > 0 ? '重新选择图片' : '选择多张图片'}
+              </Button>
+            </label>
+            
+            {selectedFiles.length > 0 && (
+              <Box sx={{ maxHeight: '450px', overflowY: 'auto', pr: 1 }}>
                 {selectedFiles.map((file, index) => (
-                  <Box key={index} sx={{ mb: 3, p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
-                    <Typography variant="subtitle2" gutterBottom>
-                      图片 {index + 1}: {file.name}
-                    </Typography>
+                  <Box 
+                    key={index} 
+                    sx={{ 
+                      mb: 2.5, 
+                      p: 2.5, 
+                      border: '1px solid #e0e0e0',
+                      borderRadius: 2,
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                        borderColor: 'rgb(120, 140, 231)',
+                      }
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <Box
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, rgb(120, 140, 231) 0%, rgb(90, 110, 201) 100%)',
+                          color: 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 'bold',
+                          mr: 2,
+                          flexShrink: 0
+                        }}
+                      >
+                        {index + 1}
+                      </Box>
+                      <Typography 
+                        variant="subtitle2" 
+                        sx={{ 
+                          fontWeight: 600,
+                          color: 'text.primary',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {file.name}
+                      </Typography>
+                    </Box>
                     <TextField
                       fullWidth
                       label="标题"
@@ -615,6 +857,7 @@ export default function MainLayout() {
                       }}
                       size="small"
                       margin="dense"
+                      sx={{ mb: 1.5 }}
                     />
                     <TextField
                       fullWidth
@@ -629,6 +872,7 @@ export default function MainLayout() {
                       margin="dense"
                       multiline
                       rows={2}
+                      sx={{ mb: 1.5 }}
                     />
                     <TextField
                       fullWidth
@@ -642,135 +886,51 @@ export default function MainLayout() {
                       }}
                       size="small"
                       margin="dense"
-                      helperText="例如: 风景, 旅行, 自然"
+                      placeholder="例如: 风景, 旅行, 自然"
                     />
                   </Box>
                 ))}
               </Box>
-            ) : (
-              // 单张上传模式
-              <>
-                {selectedFile && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    已选择: {selectedFile.name}
-                  </Typography>
-                )}
-                {aiAnalyzing && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                    <CircularProgress size={20} />
-                    <Typography variant="body2" color="primary">
-                      AI正在分析图片...
-                    </Typography>
-                  </Box>
-                )}
-                <TextField
-                  fullWidth
-                  label="标题（必填）"
-                  value={uploadForm.title}
-                  onChange={(e) => setUploadForm({ ...uploadForm, title: e.target.value })}
-                  margin="normal"
-                  required
-                />
-                <TextField
-                  fullWidth
-                  label="描述"
-                  value={uploadForm.description}
-                  onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
-                  margin="normal"
-                  multiline
-                  rows={3}
-                  disabled={aiDescriptionEnabled}
-                  helperText={aiDescriptionEnabled ? "AI描述已启用" : ""}
-                />
-                
-                {uploadForm.tags && uploadForm.tags.length > 0 && (
-                  <Box sx={{ mt: 2 }}>
-                    <Typography variant="body2" color="text.secondary" gutterBottom>
-                      AI生成的标签:
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                      {uploadForm.tags.map((tag, index) => (
-                        <Box
-                          key={index}
-                          sx={{
-                            px: 1.5,
-                            py: 0.5,
-                            borderRadius: 1,
-                            bgcolor: 'primary.light',
-                            color: 'white',
-                            fontSize: '0.875rem',
-                          }}
-                        >
-                          {tag}
-                        </Box>
-                      ))}
-                    </Box>
-                  </Box>
-                )}
-                
-                <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid #e0e0e0' }}>
-                  <Typography variant="subtitle2" gutterBottom>
-                    AI功能
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
-                    <Button
-                      variant={aiDescriptionEnabled ? "contained" : "outlined"}
-                      startIcon={<AiIcon />}
-                      size="small"
-                      onClick={() => {
-                        setAiDescriptionEnabled(!aiDescriptionEnabled);
-                        if (aiDescriptionEnabled) {
-                          setUploadForm({ ...uploadForm, description: '' });
-                        }
-                      }}
-                    >
-                      {aiDescriptionEnabled ? "✓ AI生成描述" : "AI生成描述"}
-                    </Button>
-                    <Button
-                      variant={aiTagsEnabled ? "contained" : "outlined"}
-                      startIcon={<AiIcon />}
-                      size="small"
-                      onClick={() => {
-                        setAiTagsEnabled(!aiTagsEnabled);
-                        if (aiTagsEnabled) {
-                          setUploadForm({ ...uploadForm, tags: [] });
-                        }
-                      }}
-                    >
-                      {aiTagsEnabled ? "✓ AI生成标签" : "AI生成标签"}
-                    </Button>
-                  </Box>
-                </Box>
-              </>
             )}
           </Box>
         </DialogContent>
 
-        {!batchMode && (
-          <Typography variant="caption" color="text.secondary" sx={{ pl: 3}}>
-            Powered by Google Gemini 2.0 Flash
-          </Typography>
-        )}
+        <Typography variant="caption" color="text.secondary" sx={{ pl: 3, mt: -2}}>
+          注意：批量上传时，不可使用AI功能
+        </Typography>
 
-        <DialogActions>
-          <Button onClick={() => {
-            setUploadDialogOpen(false);
-            setSelectedFile(null);
-            setSelectedFiles([]);
-            setBatchForms([]);
-            setBatchMode(false);
-            setUploadForm({ title: '', description: '', tags: [] });
-            setAiDescriptionEnabled(true);
-            setAiTagsEnabled(true);
-          }}>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button 
+            onClick={() => {
+              setBatchUploadDialogOpen(false);
+              setSelectedFiles([]);
+              setBatchForms([]);
+            }}
+            sx={{ 
+              color: 'text.secondary',
+              '&:hover': {
+                backgroundColor: 'rgba(0, 0, 0, 0.04)'
+              }
+            }}
+          >
             取消
           </Button>
           <Button 
-            onClick={handleUpload} 
-            disabled={uploading || (!selectedFile && selectedFiles.length === 0) || aiAnalyzing} 
+            onClick={handleBatchUpload} 
+            disabled={uploading || selectedFiles.length === 0} 
             variant="contained"
+            sx={{
+              background: 'linear-gradient(135deg, rgb(120, 140, 231) 0%, rgb(90, 110, 201) 100%)',
+              px: 3,
+              '&:hover': {
+                background: 'linear-gradient(135deg, rgb(110, 130, 221) 0%, rgb(80, 100, 191) 100%)',
+              },
+              '&:disabled': {
+                background: 'rgba(0, 0, 0, 0.12)'
+              }
+            }}
           >
-            {uploading ? <CircularProgress size={24} /> : '上传'}
+            {uploading ? <CircularProgress size={24} color="inherit" /> : '开始上传'}
           </Button>
         </DialogActions>
       </Dialog>
