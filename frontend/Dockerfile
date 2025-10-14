@@ -5,9 +5,15 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# 接收构建参数
+ARG VITE_API_URL=http://localhost:8000/api
+ENV VITE_API_URL=$VITE_API_URL
+
 COPY package*.json ./
 RUN npm install
 COPY . .
+
+# 构建应用，环境变量会被打包进去
 RUN npm run build
 
 # --- 第二阶段: 使用 Nginx 托管静态文件 ---

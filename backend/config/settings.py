@@ -21,12 +21,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-wm*wjc32otzbfv_4wjzags$)6yn8q6x0mx3*m6)59a#43iofa4'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-wm*wjc32otzbfv_4wjzags$)6yn8q6x0mx3*m6)59a#43iofa4')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']  # 允许所有主机访问（生产环境应该设置具体域名）
+# 允许的主机列表，从环境变量读取，用逗号分隔
+# 例如: ALLOWED_HOSTS=example.com,www.example.com,192.168.1.100
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',') if os.environ.get('ALLOWED_HOSTS') else ['*']
 
 
 # Application definition
@@ -55,27 +57,40 @@ MIDDLEWARE = [
 ]
 
 # CORS配置
-# 注意：当使用credentials时，不能使用CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',  # Vite开发服务器
-    'http://localhost:3000',  # 备用端口
-    'http://localhost',       # Docker部署的前端（端口80）
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1',       # Docker部署的前端（端口80）
-]
+# 从环境变量读取允许的源，用逗号分隔
+# 例如: CORS_ALLOWED_ORIGINS=http://example.com,https://example.com,http://192.168.1.100
+cors_origins_env = os.environ.get('CORS_ALLOWED_ORIGINS', '')
+if cors_origins_env:
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins_env.split(',') if origin.strip()]
+else:
+    # 开发环境默认配置
+    CORS_ALLOWED_ORIGINS = [
+        'http://localhost:5173',  # Vite开发服务器
+        'http://localhost:3000',  # 备用端口
+        'http://localhost',       # Docker部署的前端（端口80）
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1',       # Docker部署的前端（端口80）
+    ]
 
 CORS_ALLOW_CREDENTIALS = True  # 允许携带Cookie
 
 # CSRF配置
-CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'http://localhost',       # Docker部署的前端（端口80）
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1',       # Docker部署的前端（端口80）
-]
+# 从环境变量读取CSRF信任的源，用逗号分隔
+# 例如: CSRF_TRUSTED_ORIGINS=http://example.com,https://example.com
+csrf_origins_env = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+if csrf_origins_env:
+    CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in csrf_origins_env.split(',') if origin.strip()]
+else:
+    # 开发环境默认配置
+    CSRF_TRUSTED_ORIGINS = [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'http://localhost',       # Docker部署的前端（端口80）
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1',       # Docker部署的前端（端口80）
+    ]
 
 # CSRF Cookie设置
 CSRF_COOKIE_SAMESITE = 'Lax'  # 允许跨站点请求携带Cookie
@@ -182,4 +197,4 @@ REST_FRAMEWORK = {
 }
 
 # Google Gemini API settings
-GEMINI_API_KEY = 'AIzaSyBndWKMdbcnjKRheORp93WbXZTGYrT8I0c'
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AIzaSyBndWKMdbcnjKRheORp93WbXZTGYrT8I0c')
