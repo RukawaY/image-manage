@@ -63,6 +63,8 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:5173',
     'http://127.0.0.1:3000',
     'http://127.0.0.1',       # Docker部署的前端（端口80）
+    'http://10.193.151.171',
+    'http://10.193.151.171:80'  # 公网IP
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # 允许携带Cookie
@@ -75,6 +77,8 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:5173',
     'http://127.0.0.1:3000',
     'http://127.0.0.1',       # Docker部署的前端（端口80）
+    'http://10.193.151.171',
+    'http://10.193.151.171:80'  # 公网IP
 ]
 
 # CSRF Cookie设置

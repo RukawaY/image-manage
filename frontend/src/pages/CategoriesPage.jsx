@@ -130,7 +130,7 @@ export default function CategoriesPage() {
         <Typography variant="h5" gutterBottom>
           热门标签
         </Typography>
-        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 3 }}>
+        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 3 , rowGap: 1 }}>
           {popularTags.map((tag) => (
             <Chip
               key={tag.id}

@@ -5,6 +5,8 @@ Project for B/S architecture software design.
 
 ## With Docker
 
+**NOTE:** Before deploying, modify `backend/config/settings.py` line 66-67 and 80-81 with your own ip.
+
 ### First Time Setup
 
 - build image
