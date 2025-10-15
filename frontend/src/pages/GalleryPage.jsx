@@ -139,7 +139,14 @@ export default function GalleryPage() {
       return;
     }
 
-    const tags = newTags.split(',').map(t => t.trim()).filter(t => t);
+    // 解析输入框内容（支持分号分隔）
+    const parseTagInput = (input) => {
+      return input
+        .split(/[;；]/) // 支持中英文分号
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+    };
+    const tags = parseTagInput(newTags);
     
     try {
       await imageAPI.addTags(selectedImage.id, tags);
@@ -238,11 +245,11 @@ export default function GalleryPage() {
         <DialogContent>
           <TextField
             fullWidth
-            label="新标签（用逗号分隔）"
+            label="新标签（用分号分隔）"
             value={newTags}
             onChange={(e) => setNewTags(e.target.value)}
             margin="normal"
-            helperText="例如: 风景, 旅行, 夏天"
+            helperText="例如: 风景；旅行；夏天"
             autoFocus
           />
           {selectedImage?.tags && selectedImage.tags.length > 0 && (

@@ -89,7 +89,7 @@ export default function ImageSearch({ open, onClose, onSearch }) {
                 name="tags"
                 value={searchForm.tags}
                 onChange={handleChange}
-                helperText="多个标签用逗号分隔"
+                helperText="多个标签用分号分隔"
               />
             </Grid>
 

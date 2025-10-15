@@ -176,7 +176,8 @@ export default function MainLayout() {
     const forms = files.map(file => ({
       title: file.name.replace(/\.[^/.]+$/, ''), // 去掉扩展名
       description: '',
-      tags: []
+      tags: [],
+      tagInput: '' // 添加标签输入字段
     }));
     setBatchForms(forms);
   };
@@ -257,13 +258,27 @@ export default function MainLayout() {
       return;
     }
     
+    // 解析标签输入（支持分号分隔）
+    const parseTagInput = (input) => {
+      return input
+        .split(/[;；]/) // 支持中英文分号
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+    };
+    
+    // 处理批量表单数据，解析标签输入
+    const processedBatchForms = batchForms.map(form => ({
+      ...form,
+      tags: form.tagInput ? parseTagInput(form.tagInput) : []
+    }));
+    
     const formData = new FormData();
     selectedFiles.forEach(file => {
       formData.append('files', file);
     });
     
     // 添加元数据
-    formData.append('metadata', JSON.stringify(batchForms));
+    formData.append('metadata', JSON.stringify(processedBatchForms));
     
     try {
       setUploading(true);
@@ -876,17 +891,16 @@ export default function MainLayout() {
                     />
                     <TextField
                       fullWidth
-                      label="标签（用逗号分隔）"
-                      value={batchForms[index]?.tags?.join(', ') || ''}
+                      label="标签（用分号分隔）"
+                      value={batchForms[index]?.tagInput || ''}
                       onChange={(e) => {
                         const newForms = [...batchForms];
-                        const tags = e.target.value.split(',').map(t => t.trim()).filter(t => t);
-                        newForms[index] = { ...newForms[index], tags };
+                        newForms[index] = { ...newForms[index], tagInput: e.target.value };
                         setBatchForms(newForms);
                       }}
                       size="small"
                       margin="dense"
-                      placeholder="例如: 风景, 旅行, 自然"
+                      placeholder="例如: 风景；旅行；自然"
                     />
                   </Box>
                 ))}
