@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+// 在生产环境（Docker部署）中，使用相对路径 /api （Nginx会代理到后端）
+// 在开发环境中，使用完整的后端地址
+const API_BASE_URL = import.meta.env.VITE_API_URL || (
+  import.meta.env.MODE === 'production' ? '/api' : 'http://localhost:8000/api'
+);
 
 // 获取CSRF Token的辅助函数
 function getCookie(name) {
@@ -50,9 +54,20 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response && error.response.status === 401) {
-      // 未授权，重定向到登录页
-      window.location.href = '/login';
+    // 处理认证错误（401未授权 或 403禁止访问）
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      // 排除以下情况，不进行自动重定向：
+      // 1. 登录和注册接口的错误（正常的认证失败）
+      // 2. 获取当前用户接口的错误（用于检查登录状态）
+      const isAuthEndpoint = error.config?.url?.includes('/auth/login/') || 
+                            error.config?.url?.includes('/auth/register/') ||
+                            error.config?.url?.includes('/auth/user/');
+      
+      if (!isAuthEndpoint) {
+        // Session过期或未授权，清空用户状态并重定向到登录页
+        console.warn('Session已过期，请重新登录');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

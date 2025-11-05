@@ -173,6 +173,15 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Session settings
+SESSION_COOKIE_AGE = 43200  # Session cookie 有效期：12小时（秒）
+SESSION_SAVE_EVERY_REQUEST = True  # 每次请求都更新session，防止过期
+SESSION_COOKIE_HTTPONLY = True  # 防止JavaScript访问session cookie（安全性）
+SESSION_COOKIE_SAMESITE = 'Lax'  # CSRF保护
+SESSION_COOKIE_SECURE = False  # 开发环境使用HTTP，生产环境应设为True
+SESSION_COOKIE_DOMAIN = None  # 不限制域名，允许localhost和127.0.0.1
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # 关闭浏览器后session不过期
+
 # REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [

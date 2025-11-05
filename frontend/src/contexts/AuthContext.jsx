@@ -14,8 +14,10 @@ export const AuthProvider = ({ children }) => {
   const checkAuth = async () => {
     try {
       const response = await authAPI.getCurrentUser();
+      console.log('检查登录状态:', response.data);
       setUser(response.data);
     } catch (error) {
+      console.log('未登录或session已过期');
       setUser(null);
     } finally {
       setLoading(false);
@@ -24,6 +26,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     const response = await authAPI.login(credentials);
+    console.log('登录响应:', response.data);
     setUser(response.data.user);
     return response.data;
   };
