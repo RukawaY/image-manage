@@ -186,4 +186,4 @@ REST_FRAMEWORK = {
 }
 
 # Google Gemini API settings
-GEMINI_API_KEY = 'AIzaSyBndWKMdbcnjKRheORp93WbXZTGYrT8I0c'
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
